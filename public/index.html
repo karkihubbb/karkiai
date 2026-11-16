@@ -671,6 +671,23 @@ body {background:radial-gradient(ellipse at 72% -10%,#e3dcff 0,transparent 38%),
   .topbar {background:#ffffffed}
 }
 
+/* KARKIAI NEON STUDIO */
+:root{--bg:#f7f8ff;--sidebar:#111329;--ink:#191a39;--muted:#8b90ad;--line:#e5e8f5;--accent:#7058f5;--soft:#eeefff}
+body{background:radial-gradient(ellipse at 70% 0%,#b6a9ff30,transparent 35%),radial-gradient(ellipse at 100% 75%,#54d4d020,transparent 30%),#f7f8ff}
+.sidebar{background:linear-gradient(160deg,#111329,#20204a);border-right:1px solid #282b50;padding:23px 15px 16px}
+.brand{font-size:21px;letter-spacing:-1px;padding:4px 8px 27px}.brand-icon{width:37px;height:37px;border-radius:13px;background:linear-gradient(145deg,#9b7bff,#4b7cff 65%,#48d5d0);box-shadow:0 7px 24px #7962ff55}.brand span:last-child{color:#a99aff}
+.new-chat{height:46px;border-radius:13px;background:linear-gradient(105deg,#765cff,#4f7ffb);box-shadow:0 9px 22px #705bff35}
+.search{height:42px;background:#202343;border-color:#34385e;border-radius:12px;margin:15px 0 26px}.search input{color:white}.section-label{color:#858bac;letter-spacing:.14em}.history-item{border-radius:10px;color:#c2c5df;padding:11px}.history-item:hover,.history-item.active{background:#30335b;color:white}.sidebar-bottom{border-color:#303456}
+.orb{border:1px solid #dcd7ff;background:radial-gradient(circle at 32% 25%,#fff 0 8%,#d9d0ff 27%,#9a7bff 57%,#3d9be8 100%);box-shadow:0 0 0 5px #8e79ff12,0 8px 25px #715bff40;animation:orbFloat 5s ease-in-out infinite}@keyframes orbFloat{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-5px) rotate(8deg)}}
+.topbar{height:70px;padding:0 30px;background:#fbfcffdc;border-bottom:1px solid #e8e9f5;backdrop-filter:blur(18px)}.top-identity{display:flex;flex-direction:column;gap:2px;min-width:0}.top-identity strong{font:800 15px Manrope,sans-serif;letter-spacing:-.5px;color:#242044}.top-identity .chat-title{font:500 10px "DM Sans",sans-serif;color:#999bb4;max-width:240px}
+.model-label{display:flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid #e2defe;border-radius:999px;background:#f1efff;color:#7059e8;font-size:9px;font-weight:800;letter-spacing:.09em}.cloud-dot{width:6px;height:6px;border-radius:50%;background:#37c99a;box-shadow:0 0 0 3px #37c99a20}
+.welcome{position:relative;width:min(100%,780px);margin:clamp(50px,10vh,105px) auto 42px}.welcome:before{content:"";position:absolute;z-index:-1;top:-75px;left:50%;width:360px;height:220px;transform:translateX(-50%);background:radial-gradient(ellipse,#a99aff28,transparent 68%);filter:blur(8px);pointer-events:none}
+.welcome .orb{width:76px;height:76px;margin-bottom:25px;box-shadow:0 0 0 9px #8c76ff0d,0 15px 42px #7660ff35}.welcome .orb svg{width:34px;height:34px}
+.eyebrow{color:#7770bd;font-size:9px;letter-spacing:.2em}.welcome h1{margin:17px 0 13px;font:800 clamp(36px,5vw,54px)/1.09 Manrope,sans-serif;letter-spacing:-2.6px;color:#191a39}.welcome h1 span{background:linear-gradient(100deg,#7058f5 5%,#4e8cf6 53%,#35bfc1);-webkit-background-clip:text;background-clip:text;color:transparent}.welcome p{font-size:13px;line-height:1.85;color:#8589a7}
+.suggestions{width:min(100%,690px);gap:12px;margin-top:39px}.suggestion{min-height:84px;padding:15px;border-radius:16px;border:1px solid #e7e7f5;background:#ffffffd9;box-shadow:0 8px 24px #33305f08;backdrop-filter:blur(10px)}.suggestion:hover{transform:translateY(-3px);border-color:#c5baff;box-shadow:0 14px 30px #6857f51a}.suggestion-icon{width:39px;height:39px;flex-basis:39px;border-radius:13px;background:linear-gradient(140deg,#eeeaff,#e5f5ff);color:#7058ef;font-size:18px}.suggestion:nth-child(2) .suggestion-icon{background:#e6f8f5;color:#22a995}.suggestion:nth-child(3) .suggestion-icon{background:#fff0e8;color:#e68a4b}.suggestion:nth-child(4) .suggestion-icon{background:#f1eaff;color:#a16be5}.suggestion strong{font-size:11px;color:#292747}.suggestion small{font-size:10px;color:#9295ae}
+.conversation{gap:27px}.message{grid-template-columns:34px minmax(0,1fr);gap:13px}.message-avatar{width:34px;height:34px;border:1px solid #e4ddff;border-radius:12px;background:linear-gradient(145deg,#f0ebff,#e8f6ff)}.message-avatar svg{width:20px;height:20px}.message-body{font-size:13.5px;line-height:1.85;color:#333450}.message.user .message-body{border:1px solid #dedbff;border-radius:18px 18px 5px 18px;background:linear-gradient(130deg,#eeebff,#eaf3ff);box-shadow:0 6px 18px #6654dc0c;color:#282647}
+.composer-area{padding:13px 24px max(15px,env(safe-area-inset-bottom));background:linear-gradient(transparent,#f7f8ff 22%)}.composer{padding:10px 11px 9px 18px;border:1px solid #dfdef2;border-radius:20px;background:white;box-shadow:0 12px 35px #39316d12}.composer:focus-within{border-color:#aaa0ff;box-shadow:0 0 0 4px #e9e5ff,0 12px 35px #39316d12}.send{width:39px;height:39px;border-radius:13px;background:linear-gradient(140deg,#8061ff,#4a82f5 75%,#35bfc1);box-shadow:0 6px 16px #6857f545}.send:hover:not(:disabled){filter:brightness(1.07)}.disclaimer{color:#9b9db4}.toast{background:#242044}
+@media(max-width:760px){.topbar{height:62px;padding:0 13px}.welcome{margin:42px auto 27px}.welcome .orb{width:62px;height:62px}.welcome h1{font-size:37px;letter-spacing:-1.8px}.welcome p{font-size:12px;padding:0 7px}.desktop-break{display:none}.suggestions{margin-top:29px;gap:9px}.suggestion{min-height:76px;padding:10px;border-radius:14px}.suggestion-icon{width:33px;height:33px;flex-basis:33px}.composer-area{padding:8px 10px max(9px,env(safe-area-inset-bottom))}.message{grid-template-columns:29px minmax(0,1fr);gap:9px}.message-avatar{width:29px;height:29px}.message-body{font-size:12.5px}}@media(max-width:380px){.welcome h1{font-size:32px}}
 </style>
 </head>
 
@@ -721,8 +738,8 @@ body {background:radial-gradient(ellipse at 72% -10%,#e3dcff 0,transparent 38%),
     <header class="topbar">
       <div class="top-left">
         <button class="icon-btn mobile-menu" id="mobileMenu">☰</button>
-        <div class="chat-title" id="chatTitle">New chat</div>
-        <div class="model-label">✦ On-device AI</div>
+        <div class="top-identity"><strong>KarkiAI</strong><span class="chat-title" id="chatTitle">New chat</span></div>
+        <div class="model-label"><span class="cloud-dot"></span> CLOUD AI</div>
       </div>
       <div class="top-actions">
         <span class="status" id="connectionStatus">Checking connection</span>
@@ -738,9 +755,9 @@ body {background:radial-gradient(ellipse at 72% -10%,#e3dcff 0,transparent 38%),
             <circle cx="12" cy="12" r="2" fill="white"/>
           </svg>
         </div>
-        <div class="eyebrow">KarkiAI · Your AI assistant</div>
-        <h1>I'm Karki. How can I help?</h1>
-        <p>Ask anything, explore ideas, or work through something step by step.</p>
+        <div class="eyebrow">✦ &nbsp; YOUR SPACE FOR BIG IDEAS &nbsp; ✦</div>
+        <h1>Big ideas start<br><span>with one message.</span></h1>
+        <p>I’m KarkiAI. Bring a question, a wild idea, or a tricky problem.<br class="desktop-break"> Let’s make something happen.</p>
 
         <div class="suggestions">
           <button class="suggestion" data-prompt="Help me brainstorm some creative ideas.">
