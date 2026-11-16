@@ -816,7 +816,13 @@ body{background:linear-gradient(135deg,#f8f4ed 0%,#eee7dc 100%)}
  .composer-area{padding:8px 10px max(9px,env(safe-area-inset-bottom))}.composer{border-radius:5px}.composer textarea{font-size:14px}
 }
 @media(max-width:360px){.model-label{display:none}.welcome h1{font-size:38px}}
-\n</style>
+\n
+/* Local AI + spoken replies */
+.voice-toggle{display:flex;align-items:center;gap:6px;border:1px solid #e4c5b4;border-radius:999px;background:#f7e7dc;color:#a34f32;padding:8px 11px;font-size:10px;font-weight:700}
+.voice-toggle[aria-pressed="false"]{background:#eee8df;border-color:#ded6c9;color:#827b70}
+@media(max-width:760px){.voice-toggle{padding:7px 9px;font-size:9px}.status{display:none}}
+
+</style>
 </head>
 
 <body>
@@ -867,10 +873,11 @@ body{background:linear-gradient(135deg,#f8f4ed 0%,#eee7dc 100%)}
       <div class="top-left">
         <button class="icon-btn mobile-menu" id="mobileMenu">☰</button>
         <div class="top-identity"><strong>KarkiAI</strong><span class="chat-title" id="chatTitle">New chat</span></div>
-        <div class="model-label"><span class="cloud-dot"></span> CLOUD AI</div>
+        <div class="model-label"><span class="cloud-dot"></span> ON-DEVICE AI</div>
       </div>
       <div class="top-actions">
-        <span class="status" id="connectionStatus">Checking connection</span>
+        <button class="voice-toggle" id="voiceToggle" type="button" aria-pressed="true" title="Turn spoken replies on or off">🔊 <span>Voice on</span></button>
+        <span class="status" id="connectionStatus">Preparing on-device AI</span>
         <button class="icon-btn" id="exportChat" title="Export chat">↧</button>
       </div>
     </header>
@@ -942,6 +949,11 @@ const STORAGE_KEY = 'karkiai_session_only';
 let chats = loadChats();
 let activeChatId = null;
 let busy = false;
+let localEngine = null;
+let engineLoading = null;
+let voiceEnabled = true;
+const LOCAL_MODEL = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
+const LOCAL_SYSTEM_PROMPT = 'You are KarkiAI, a friendly and helpful general-purpose AI assistant. Answer clearly and accurately. Explain things in simple language when useful. Be honest when uncertain.';
 
 
 function loadChats() { return []; }
@@ -1205,6 +1217,51 @@ function setBusy(value) {
   sendButton.disabled = value || !input.value.trim();
 }
 
+async function getLocalEngine() {
+  if (localEngine) return localEngine;
+  if (engineLoading) return engineLoading;
+  if (!navigator.gpu) {
+    throw new Error('This browser or device does not support WebGPU. Try the latest Chrome or Edge on a supported device.');
+  }
+  engineLoading = (async () => {
+    $('#connectionStatus').textContent = 'DOWNLOADING AI MODEL…';
+    const { CreateMLCEngine } = await import('https://esm.run/@mlc-ai/web-llm');
+    const engine = await CreateMLCEngine(LOCAL_MODEL, {
+      initProgressCallback: progress => {
+        const percent = Math.max(0, Math.min(100, Math.round((progress.progress || 0) * 100)));
+        $('#connectionStatus').textContent = progress.text
+          ? ('AI MODEL ' + percent + '%')
+          : 'PREPARING AI…';
+      }
+    });
+    localEngine = engine;
+    $('#connectionStatus').textContent = 'ON-DEVICE AI READY';
+    return engine;
+  })();
+  try { return await engineLoading; }
+  catch (error) {
+    engineLoading = null;
+    throw error;
+  }
+}
+
+function speakText(text) {
+  if (!('speechSynthesis' in window) || !voiceEnabled) return;
+  window.speechSynthesis.cancel();
+  const clean = String(text).replace(/```[\s\S]*?```/g, ' Code block omitted. ').replace(/[#*_>`]/g, ' ').slice(0, 5000);
+  const utterance = new SpeechSynthesisUtterance(clean);
+  utterance.lang = 'en-US';
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  window.speechSynthesis.speak(utterance);
+}
+
+function updateVoiceButton() {
+  const button = $('#voiceToggle');
+  button.setAttribute('aria-pressed', String(voiceEnabled));
+  button.innerHTML = (voiceEnabled ? '🔊 <span>Voice on</span>' : '🔇 <span>Voice off</span>');
+}
+
 async function sendMessage(raw) {
   const text = String(raw || '').trim();
 
@@ -1235,26 +1292,22 @@ async function sendMessage(raw) {
   renderHistory();
 
   try {
+    pending.body.textContent = 'Preparing KarkiAI on your device…';
+    const engine = await getLocalEngine();
     pending.body.textContent = 'KarkiAI is thinking…';
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: chat.messages.slice(-20).map(message => ({
-          role: message.role,
-          text: message.text
+    const result = await engine.chat.completions.create({
+      messages: [
+        { role: 'system', content: LOCAL_SYSTEM_PROMPT },
+        ...chat.messages.slice(-12).map(message => ({
+          role: message.role === 'model' ? 'assistant' : 'user',
+          content: message.text
         }))
-      })
+      ],
+      temperature: 0.7,
+      max_tokens: 1024
     });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(result.error || 'Cloud AI request failed. Please try again.');
-    }
-    const answer = String(result.answer || '').trim();
-
-    if (!answer) {
-      throw new Error('KarkiAI returned an empty response. Please try again.');
-    }
+    const answer = String(result.choices?.[0]?.message?.content || '').trim();
+    if (!answer) throw new Error('KarkiAI returned an empty response. Please try again.');
 
     pending.body.innerHTML = renderText(answer);
 
@@ -1266,8 +1319,21 @@ async function sendMessage(raw) {
     copy.textContent = 'Copy response';
     copy.addEventListener('click', () => copyText(answer));
 
-    tools.append(copy);
+    const speak = document.createElement('button');
+    speak.type = 'button';
+    speak.textContent = '🔊 Speak';
+    speak.addEventListener('click', () => {
+      if (!('speechSynthesis' in window)) return showToast('Speech is not supported in this browser.');
+      const wasEnabled = voiceEnabled;
+      voiceEnabled = true;
+      speakText(answer);
+      voiceEnabled = wasEnabled;
+      updateVoiceButton();
+    });
+
+    tools.append(copy, speak);
     pending.row.append(tools);
+    speakText(answer);
 
     chat.messages.push({ role: 'model', text: answer });
     chat.updatedAt = Date.now();
@@ -1306,17 +1372,8 @@ function closeSidebar() {
 
 async function checkConnection() {
   const status = $('#connectionStatus');
-  status.textContent = 'CONNECTING…';
-  try {
-    const response = await fetch('/api/health');
-    const data = await response.json();
-    if (!response.ok || !data.ok) throw new Error('Cloud server unavailable');
-    status.textContent = 'CLOUD SERVER READY';
-    status.classList.remove('error');
-  } catch {
-    status.textContent = 'CLOUD SERVER OFFLINE';
-    status.classList.add('error');
-  }
+  status.textContent = navigator.gpu ? 'ON-DEVICE AI READY' : 'WEBGPU NOT AVAILABLE';
+  status.classList.toggle('error', !navigator.gpu);
 }
 
 /* EVENTS */
@@ -1356,6 +1413,13 @@ conversation.addEventListener('click', event => {
   const code = button.closest('.code-block').querySelector('pre code').textContent;
   copyText(code);
 });
+
+$('#voiceToggle').addEventListener('click', () => {
+  voiceEnabled = !voiceEnabled;
+  if (!voiceEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+  updateVoiceButton();
+});
+updateVoiceButton();
 
 $('#exportChat').addEventListener('click', () => {
   const chat = activeChat();
