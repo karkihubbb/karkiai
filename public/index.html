@@ -611,6 +611,66 @@ button {cursor:pointer}
   .model-label {display:none}
   .suggestion {align-items:flex-start}
 }
+
+/* KarkiAI vibrant refresh */
+:root {
+  --bg:#f5f6ff;
+  --sidebar:#10152b;
+  --ink:#202344;
+  --muted:#8c91ad;
+  --line:#e4e5f2;
+  --accent:#7657ff;
+  --soft:#f0edff;
+}
+body {background:radial-gradient(ellipse at 72% -10%,#e3dcff 0,transparent 38%),#f7f7ff;color:var(--ink)}
+.sidebar {background:linear-gradient(180deg,#151a35 0%,#20234a 100%);border-right:1px solid #30345b;color:#fff}
+.brand {color:#fff}
+.brand-icon {background:linear-gradient(135deg,#8b5cf6,#3b82f6);box-shadow:0 6px 18px #7657ff55}
+.brand span:last-child {color:#a99aff}
+.new-chat {background:linear-gradient(100deg,#7657ff,#4f7cff);box-shadow:0 7px 18px #7657ff35}
+.new-chat:hover {background:linear-gradient(100deg,#6845f4,#3e6cf4)}
+.search {background:#252a4a;border-color:#3a4066;color:#aeb4d1}
+.search input {color:#fff}
+.search input::placeholder {color:#9299bd}
+.section-label {color:#9299bd}
+.history-item {color:#c1c5df}
+.history-item:hover,.history-item.active {background:#34395f;color:#fff}
+.history-empty {color:#9299bd}
+.sidebar-bottom {border-color:#373c61}
+.profile-name {color:#fff}
+.profile-sub {color:#a2a8ca}
+.orb {border:1px solid #d9d2ff;background:radial-gradient(circle at 30% 25%,#fff 0,#d8d0ff 35%,#987dff 68%,#5142b8 100%);box-shadow:0 5px 20px #7657ff30}
+.topbar {background:#ffffffdc;border-bottom-color:#e7e4f8;backdrop-filter:blur(14px)}
+.chat-title {color:#252449}
+.model-label {background:#f0edff;border-color:#ded7ff;color:#7053e8}
+.status {color:#258b72}
+.welcome .eyebrow {color:#7657df}
+.welcome h1 {background:linear-gradient(100deg,#27234d 10%,#7657ff 58%,#2789dc);-webkit-background-clip:text;background-clip:text;color:transparent}
+.welcome p {color:#8589a7}
+.suggestion {background:#ffffffd9;border-color:#e4e0fa;box-shadow:0 5px 18px #39306d08}
+.suggestion:hover {border-color:#b7aaff;box-shadow:0 10px 26px #7657ff18}
+.suggestion-icon {background:linear-gradient(135deg,#f0eaff,#e5f1ff);color:#7657e8}
+.suggestion strong {color:#302d58}
+.suggestion small {color:#8589a7}
+.message-avatar {background:linear-gradient(135deg,#f0eaff,#e6f1ff);border-color:#e2dcff}
+.message-body {color:#343451}
+.message.user .message-body {background:linear-gradient(120deg,#eeeaff,#eaf2ff);border-color:#ded9ff;color:#29264e}
+.message-body h1,.message-body h2,.message-body h3 {color:#302b60}
+.message-body a {color:#7657e8}
+.typing i {background:#8668f5}
+.composer-area {background:linear-gradient(transparent,#f7f7ff 24%)}
+.composer {border-color:#dedaf4;box-shadow:0 9px 30px #3a2b7812}
+.composer:focus-within {border-color:#a999ff;box-shadow:0 0 0 4px #e9e4ff}
+.composer textarea {color:#28264b}
+.send {background:linear-gradient(135deg,#805dff,#477df5);box-shadow:0 5px 14px #7657ff40}
+.send:hover:not(:disabled) {background:linear-gradient(135deg,#704cf4,#3569ec)}
+.disclaimer {color:#9698b1}
+.toast {background:#27234d}
+@media(max-width:760px) {
+  .sidebar {box-shadow:20px 0 55px #080b2055}
+  .topbar {background:#ffffffed}
+}
+
 </style>
 </head>
 
