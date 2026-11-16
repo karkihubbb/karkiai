@@ -18,7 +18,7 @@ app.get('/api/health', (_req, res) => {
     ok: true,
     service: 'KarkiAI',
     apiKeyConfigured: hasCloudKey(),
-    provider: process.env.GROQ_API_KEY ? 'Groq' : (process.env.GEMINI_API_KEY ? 'Gemini' : null)
+    provider: process.env.GROQ_API_KEY ? 'Groq' : (process.env.GEMINI_API_KEY ? 'Gemini' : 'Pollinations (no key)')
   });
 });
 
@@ -91,6 +91,28 @@ async function askGemini(messages) {
   return { answer, model: GEMINI_MODEL, provider: 'Gemini' };
 }
 
+async function askPollinations(messages) {
+  // Anonymous public fallback: no API key or account required.
+  // Anonymous access is throttled and is not a guaranteed production service.
+  const transcript = messages.slice(-10).map(message =>
+    `${message.role === 'assistant' ? 'KarkiAI' : 'User'}: ${message.content}`
+  ).join('\n');
+  const prompt = `${SYSTEM_PROMPT}\nContinue this conversation:\n${transcript}\nKarkiAI:`;
+  const url = 'https://text.pollinations.ai/' + encodeURIComponent(prompt) + '?model=openai';
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: { 'Accept': 'text/plain' },
+    signal: AbortSignal.timeout(60000)
+  });
+  const answer = (await response.text()).trim();
+  if (!response.ok || !answer) {
+    const error = new Error(answer.slice(0, 300) || `Pollinations API error: ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
+  return { answer, model: 'Pollinations anonymous', provider: 'Pollinations' };
+}
+
 app.post('/api/chat', async (req, res) => {
   if (!hasCloudKey()) {
     return res.status(503).json({
@@ -112,23 +134,26 @@ app.post('/api/chat', async (req, res) => {
     return res.status(400).json({ error: 'The latest message must be from you.' });
   }
 
-  try {
-    // Prefer Groq when configured; retain Gemini as a compatibility fallback.
-    if (process.env.GROQ_API_KEY) {
-      const result = await askGroq(messages);
-      return res.json(result);
-    }
+  const providers = [];
+  if (process.env.GROQ_API_KEY) providers.push(['Groq', () => askGroq(messages)]);
+  if (process.env.GEMINI_API_KEY) providers.push(['Gemini', () => askGemini(messages)]);
+  providers.push(['Pollinations', () => askPollinations(messages)]);
 
-    const result = await askGemini(messages);
-    return res.json(result);
-  } catch (error) {
-    console.error('KarkiAI cloud AI error:', error.message);
-    const status = error.status === 429 ? 429 : (error.status === 401 || error.status === 403 ? error.status : 502);
-    let message = error.message || 'The cloud AI service is temporarily unavailable.';
-    if (status === 429) message = 'The AI provider rate or usage limit has been reached. Please wait and try again. Details: ' + message;
-    if (status === 401 || status === 403) message = 'The cloud AI key was rejected. Check the provider key in Render Environment.';
-    return res.status(status).json({ error: message });
+  const failures = [];
+  for (const [name, run] of providers) {
+    try {
+      const result = await run();
+      return res.json(result);
+    } catch (error) {
+      console.error(`KarkiAI ${name} provider failed:`, error.message);
+      failures.push(`${name}: ${error.message}`);
+    }
   }
+
+  return res.status(503).json({
+    error: 'All available AI services are temporarily unavailable or rate-limited. Please try again later.',
+    details: failures.slice(-3)
+  });
 });
 
 app.get('*', (_req, res) => {
