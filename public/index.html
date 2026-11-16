@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f8fa">
+  <meta name="description" content="KarkiAI — a thoughtful AI assistant for ideas, writing, learning and problem-solving.">
+  <title>KarkiAI — Your AI Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fa;
+      --sidebar: #f2f4f7;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --line: #e5e9ef;
+      --line-strong: #d9e0e9;
+      --ink: #17212f;
+      --ink-soft: #344255;
+      --muted: #7b8796;
+      --accent: #536f91;
+      --accent-dark: #3d5878;
+      --accent-soft: #eaf0f6;
+      --shadow: 0 18px 50px rgba(24, 39, 58, .06);
+      --sidebar-width: 276px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      overflow: hidden;
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app { display: flex; height: 100dvh; min-height: 0; }
+    .sidebar {
+      width: var(--sidebar-width); flex: 0 0 var(--sidebar-width); height: 100%;
+      background: var(--sidebar); border-right: 1px solid var(--line);
+      display: flex; flex-direction: column; padding: 22px 17px 16px; gap: 18px;
+    }
+    .brand-row { display: flex; align-items: center; justify-content: space-between; padding: 1px 6px 6px; }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font: 800 20px 'Manrope', sans-serif; letter-spacing: -.7px; }
+    .brand-mark { width: 31px; height: 31px; border-radius: 10px; display: grid; place-items: center; color: white; background: var(--ink); font: 700 16px 'Manrope', sans-serif; }
+    .icon-button { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 10px; color: var(--muted); background: transparent; }
+    .icon-button:hover { color: var(--ink); background: #e8edf2; }
+    .new-chat { width: 100%; height: 43px; display: flex; align-items: center; justify-content: center; gap: 9px; border: 0; border-radius: 10px; background: #1d2734; color: white; font-size: 13px; font-weight: 600; transition: background .18s, transform .18s; }
+    .new-chat:hover { background: #2b394b; transform: translateY(-1px); }
+    .search-box { display: flex; align-items: center; gap: 9px; height: 39px; padding: 0 11px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.7); color: var(--muted); }
+    .search-box input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 12px; }
+    .search-box input::placeholder { color: #9aa4b1; }
+    .nav { display: grid; gap: 3px; }
+    .nav-link { display: flex; align-items: center; gap: 12px; min-height: 39px; padding: 0 11px; border-radius: 9px; color: #596678; text-decoration: none; font-size: 12.5px; font-weight: 500; }
+    .nav-link svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 1.7; fill: none; }
+    .nav-link:hover, .nav-link.active { background: #e7edf3; color: #24364b; }
+    .side-divider { height: 1px; background: var(--line); margin: 1px 1px 0; }
+    .history-heading { display: flex; align-items: center; justify-content: space-between; padding: 0 7px; color: #9aa4b1; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .history-list { display: grid; gap: 2px; overflow: auto; min-height: 35px; }
+    .history-item { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; border: 0; background: transparent; color: #647184; padding: 8px 9px; border-radius: 8px; font-size: 11.5px; }
+    .history-item:hover, .history-item.current { background: #e7edf3; color: var(--ink); }
+    .sidebar-spacer { flex: 1; }
+    .profile { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--line); padding: 14px 4px 2px; }
+    .profile img { width: 37px; height: 37px; border-radius: 50%; object-fit: cover; object-position: 50% 35%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line-strong); }
+    .profile-copy { min-width: 0; flex: 1; }
+    .profile-name { color: var(--ink); font-size: 12px; font-weight: 600; }
+    .profile-plan { margin-top: 2px; color: var(--muted); font-size: 10.5px; }
+    .main { flex: 1; min-width: 0; height: 100%; position: relative; display: flex; flex-direction: column; background: var(--surface); }
+    .topbar { height: 66px; flex: 0 0 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 34px; border-bottom: 1px solid #eff1f4; }
+    .top-left { display: flex; align-items: center; gap: 12px; }
+    .mobile-menu { display: none; }
+    .model-select { display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent; background: transparent; padding: 7px 9px; border-radius: 8px; color: var(--ink-soft); font-size: 12px; font-weight: 600; }
+    .model-select:hover { background: var(--surface-soft); border-color: var(--line); }
+    .model-dot { width: 7px; height: 7px; border-radius: 50%; background: #7188a1; }
+    .top-actions { display: flex; align-items: center; gap: 7px; }
+    .top-actions .icon-button { width: 34px; height: 34px; }
+    .top-actions svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 1.7; fill: none; }
+    .content { flex: 1; min-height: 0; overflow-y: auto; padding: 42px 28px 24px; scroll-behavior: smooth; }
+    .welcome { max-width: 820px; margin: 70px auto 0; text-align: center; }
+    .welcome-kicker { color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+    .welcome h1 { margin: 13px 0 9px; font: 600 clamp(29px, 3vw, 40px)/1.16 'Manrope', sans-serif; letter-spacing: -1.8px; color: #202b39; }
+    .welcome p { margin: 0; color: #7b8795; font-size: 14px; line-height: 1.6; }
+    .suggestions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 11px; max-width: 840px; margin: 42px auto 0; }
+    .suggestion { min-height: 92px; text-align: left; padding: 15px 15px 13px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); transition: border-color .18s, box-shadow .18s, transform .18s; }
+    .suggestion:hover { border-color: #c9d5e2; box-shadow: 0 8px 24px rgba(38, 61, 88, .07); transform: translateY(-2px); }
+    .suggestion-icon { width: 27px; height: 27px; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: 8px; margin-bottom: 10px; }
+    .suggestion-icon svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+    .suggestion strong { display: block; font-size: 11.5px; font-weight: 600; }
+    .suggestion span { display: block; margin-top: 3px; color: #8b96a3; font-size: 10px; }
+    .conversation { width: min(100%, 820px); margin: 10px auto 24px; display: grid; gap: 22px; }
+    .message { display: grid; grid-template-columns: 29px minmax(0,1fr); gap: 12px; align-items: start; animation: appear .2s ease; }
+    @keyframes appear { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+    .message-avatar { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #eaf0f6; color: var(--accent-dark); font-size: 11px; font-weight: 700; overflow: hidden; }
+    .message.user .message-avatar { background: #e8edf2; }
+    .message.user .message-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 35%; }
+    .message-body { min-width: 0; padding-top: 3px; color: #344255; font-size: 13px; line-height: 1.75; overflow-wrap: anywhere; }
+    .message.user .message-body { color: #1e2938; }
+    .message-body p { margin: 0 0 9px; }
+    .message-body p:last-child { margin-bottom: 0; }
+    .message-body pre { overflow-x: auto; padding: 13px; border-radius: 9px; background: #f3f5f8; border: 1px solid var(--line); font-size: 11px; }
+    .message-body code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92em; background: #f1f4f7; padding: 2px 4px; border-radius: 4px; }
+    .message-body pre code { padding: 0; background: transparent; }
+    .typing { display: inline-flex; gap: 4px; align-items: center; height: 20px; }
+    .typing i { width: 5px; height: 5px; border-radius: 50%; background: #8d9bab; animation: bounce 1s infinite ease-in-out; }
+    .typing i:nth-child(2) { animation-delay: .12s; } .typing i:nth-child(3) { animation-delay: .24s; }
+    @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-4px); opacity: 1; } }
+    .composer-wrap { flex: 0 0 auto; padding: 13px 26px max(17px, env(safe-area-inset-bottom)); background: linear-gradient(to bottom, rgba(255,255,255,0), #fff 18%); }
+    .composer { width: min(100%, 850px); margin: 0 auto; border: 1px solid #dce2e9; border-radius: 15px; background: #fff; box-shadow: 0 8px 26px rgba(30, 48, 70, .055); transition: border-color .15s, box-shadow .15s; }
+    .composer:focus-within { border-color: #aebfd1; box-shadow: 0 0 0 3px rgba(83,111,145,.08), 0 8px 26px rgba(30,48,70,.055); }
+    .composer textarea { display: block; width: 100%; min-height: 57px; max-height: 180px; resize: none; outline: none; border: 0; border-radius: 15px 15px 0 0; padding: 18px 18px 7px; background: transparent; color: var(--ink); font-size: 13px; line-height: 1.5; }
+    .composer textarea::placeholder { color: #a0a9b5; }
+    .composer-bottom { display: flex; align-items: center; justify-content: space-between; padding: 5px 9px 9px 13px; }
+    .composer-hint { color: #a0a9b5; font-size: 10px; }
+    .send-button { width: 34px; height: 34px; border: 0; border-radius: 9px; display: grid; place-items: center; color: #fff; background: var(--accent); transition: background .15s, transform .15s; }
+    .send-button:hover { background: var(--accent-dark); transform: translateY(-1px); }
+    .send-button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .send-button svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+    .footer-note { width: min(100%, 850px); margin: 9px auto 0; text-align: center; color: #a3acb7; font-size: 10px; }
+    .toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 12px); opacity: 0; pointer-events: none; padding: 10px 14px; background: #233142; color: #fff; border-radius: 9px; font-size: 12px; box-shadow: var(--shadow); transition: .2s; z-index: 20; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .overlay { display: none; }
+    @media (max-width: 900px) {
+      :root { --sidebar-width: 250px; }
+      .topbar { padding: 0 22px; }
+      .content { padding-inline: 20px; }
+      .suggestions { grid-template-columns: repeat(2, 1fr); max-width: 560px; }
+      .welcome { margin-top: 45px; }
+    }
+    @media (max-width: 680px) {
+      body { overflow: hidden; }
+      .sidebar { position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; width: min(82vw, 300px); transform: translateX(-102%); transition: transform .22s ease; box-shadow: 20px 0 50px rgba(22,34,50,.12); }
+      .sidebar.open { transform: translateX(0); }
+      .overlay { display: block; position: fixed; inset: 0; z-index: 25; background: rgba(20,29,40,.25); opacity: 0; visibility: hidden; transition: .2s; }
+      .overlay.show { opacity: 1; visibility: visible; }
+      .main { width: 100%; }
+      .topbar { height: 55px; flex-basis: 55px; padding: 0 13px; }
+      .mobile-menu { display: grid; }
+      .model-select { font-size: 11px; }
+      .top-actions { gap: 1px; }
+      .top-actions .icon-button { width: 31px; height: 31px; }
+      .content { padding: 23px 16px 12px; }
+      .welcome { margin-top: 42px; }
+      .welcome h1 { font-size: 31px; letter-spacing: -1.1px; }
+      .welcome p { max-width: 310px; margin-inline: auto; font-size: 12.5px; }
+      .suggestions { margin-top: 27px; gap: 8px; }
+      .suggestion { min-height: 84px; padding: 11px; }
+      .suggestion span { font-size: 9.5px; }
+      .composer-wrap { padding: 8px 12px max(10px, env(safe-area-inset-bottom)); }
+      .composer { border-radius: 13px; }
+      .composer textarea { min-height: 53px; padding: 15px 14px 5px; font-size: 14px; }
+      .composer-hint { font-size: 9px; }
+      .footer-note { font-size: 9px; }
+      .conversation { gap: 17px; }
+      .message-body { font-size: 12.5px; }
+    }
+    @media (max-width: 390px) {
+      .suggestion { min-height: 80px; }
+      .suggestion strong { font-size: 10.5px; }
+      .welcome h1 { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="brand-row">
+        <a class="brand" href="#" aria-label="KarkiAI home"><span class="brand-mark">K</span><span>KarkiAI</span></a>
+        <button class="icon-button" id="collapseSidebar" aria-label="Close sidebar" title="Close sidebar"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 5 7 12l7 7M19 5v14"/></svg></button>
+      </div>
+      <button class="new-chat" id="newChat"><span style="font-size:18px;line-height:1">＋</span> New chat</button>
+      <label class="search-box"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><input id="historySearch" type="search" placeholder="Search chats" aria-label="Search chats"></label>
+      <nav class="nav">
+        <a href="#" class="nav-link active" data-section="Home"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-6v-7h-4v7H4a1 1 0 0 1-1-1z"/></svg>Home</a>
+        <a href="#" class="nav-link" data-section="Explore"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2.2 5.3-5.3 2.2 2.2-5.3z"/></svg>Explore</a>
+        <a href="#" class="nav-link" data-section="Library"><svg viewBox="0 0 24 24"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v18H7.5A2.5 2.5 0 0 1 5 17.5zM5 5v14"/><path d="M9 7h7M9 11h7"/></svg>Library</a>
+        <a href="#" class="nav-link" data-section="History"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>History</a>
+      </nav>
+      <div class="side-divider"></div>
+      <div class="history-heading"><span>Recent chats</span><span id="historyCount">0</span></div>
+      <div class="history-list" id="historyList"></div>
+      <div class="sidebar-spacer"></div>
+      <div class="profile">
+        <img src="/assets/karki-profile.png" alt="Karki profile photo">
+        <div class="profile-copy"><div class="profile-name">Karki</div><div class="profile-plan">Personal workspace</div></div>
+        <button class="icon-button" id="profileButton" aria-label="Profile options"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m9 18 6-6-6-6"/></svg></button>
+      </div>
+    </aside>
+    <div class="overlay" id="overlay"></div>
+    <main class="main">
+      <header class="topbar">
+        <div class="top-left">
+          <button class="icon-button mobile-menu" id="openSidebar" aria-label="Open menu"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+          <button class="model-select" type="button" title="KarkiAI assistant"><span class="model-dot"></span>KarkiAI <span style="color:#9aa5b2;font-weight:400">Assistant</span></button>
+        </div>
+        <div class="top-actions">
+          <button class="icon-button" id="exportChat" aria-label="Export conversation" title="Export conversation"><svg viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M5 17v3h14v-3"/></svg></button>
+          <button class="icon-button" id="clearChat" aria-label="Clear conversation" title="Clear conversation"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button>
+        </div>
+      </header>
+      <section class="content" id="contentArea">
+        <div class="welcome" id="welcome">
+          <div class="welcome-kicker">A clearer way to think</div>
+          <h1>Hello, Karki.</h1>
+          <p>What would you like to work on today?</p>
+          <div class="suggestions">
+            <button class="suggestion" data-prompt="Help me brainstorm thoughtful ideas for a project."><span class="suggestion-icon"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 22h4M8 14c-1.2-.9-2-2.3-2-4a6 6 0 1 1 12 0c0 1.7-.8 3.1-2 4-.8.6-1 1.2-1 2h-6c0-.8-.2-1.4-1-2Z"/></svg></span><strong>Brainstorm ideas</strong><span>Explore possibilities</span></button>
+            <button class="suggestion" data-prompt="Summarize this clearly and highlight the key points: "><span class="suggestion-icon"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M15 3v5h5M9 12h7M9 16h7"/></svg></span><strong>Summarize text</strong><span>Make it easier to digest</span></button>
+            <button class="suggestion" data-prompt="Help me write clean, well-documented code for: "><span class="suggestion-icon"><svg viewBox="0 0 24 24"><path d="m8 8-5 4 5 4M16 8l5 4-5 4M14 4l-4 16"/></svg></span><strong>Write code</strong><span>Build something useful</span></button>
+            <button class="suggestion" data-prompt="Teach me this topic step by step in simple language: "><span class="suggestion-icon"><svg viewBox="0 0 24 24"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H12v17H5.5A2.5 2.5 0 0 0 3 22zM21 5.5A2.5 2.5 0 0 0 18.5 3H12v17h6.5a2.5 2.5 0 0 1 2.5 2z"/></svg></span><strong>Learn something</strong><span>Understand it step by step</span></button>
+          </div>
+        </div>
+        <div class="conversation" id="conversation" aria-live="polite"></div>
+      </section>
+      <div class="composer-wrap" id="composerWrap">
+        <form class="composer" id="chatForm">
+          <textarea id="messageInput" rows="1" placeholder="Message KarkiAI..." aria-label="Message KarkiAI"></textarea>
+          <div class="composer-bottom"><span class="composer-hint">Enter to send · Shift + Enter for a new line</span><button class="send-button" id="sendButton" type="submit" aria-label="Send message"><svg viewBox="0 0 24 24"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button></div>
+        </form>
+        <div class="footer-note">KarkiAI can make mistakes. Check important information.</div>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+    const input = $('#messageInput');
+    const form = $('#chatForm');
+    const conversationEl = $('#conversation');
+    const welcomeEl = $('#welcome');
+    const sendButton = $('#sendButton');
+    const contentArea = $('#contentArea');
+    const sidebar = $('#sidebar');
+    const overlay = $('#overlay');
+    const STORE_KEY = 'karkiai_chats_v1';
+    let chats = loadChats();
+    let activeChatId = null;
+    let busy = false;
+
+    function loadChats() {
+      try { const value = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); return Array.isArray(value) ? value : []; }
+      catch { return []; }
+    }
+    function saveChats() { localStorage.setItem(STORE_KEY, JSON.stringify(chats)); }
+    function newId() { return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
+    function getActiveChat() { return chats.find(chat => chat.id === activeChatId) || null; }
+    function ensureChat() {
+      let chat = getActiveChat();
+      if (!chat) { chat = { id: newId(), title: 'New chat', messages: [], updatedAt: Date.now() }; chats.unshift(chat); activeChatId = chat.id; }
+      return chat;
+    }
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    }
+    function renderBasicMarkdown(text) {
+      let safe = escapeHtml(text);
+      safe = safe.replace(/```([\s\S]*?)```/g, (_m, code) => `<pre><code>${code.trim()}</code></pre>`);
+      safe = safe.replace(/`([^`]+)`/g, '<code>$1</code>');
+      safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      safe = safe.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      safe = safe.split(/\n{2,}/).map(block => block.startsWith('<pre>') ? block : `<p>${block.replace(/\n/g, '<br>')}</p>`).join('');
+      return safe;
+    }
+    function addMessage(role, text, pending = false) {
+      const wrapper = document.createElement('article');
+      wrapper.className = `message ${role}`;
+      const avatar = document.createElement('div');
+      avatar.className = 'message-avatar';
+      if (role === 'user') avatar.innerHTML = '<img src="/assets/karki-profile.png" alt="">';
+      else avatar.textContent = 'K';
+      const body = document.createElement('div');
+      body.className = 'message-body';
+      body.innerHTML = pending ? '<span class="typing"><i></i><i></i><i></i></span>' : renderBasicMarkdown(text);
+      wrapper.append(avatar, body);
+      conversationEl.appendChild(wrapper);
+      contentArea.scrollTop = contentArea.scrollHeight;
+      return { wrapper, body };
+    }
+    function renderChat() {
+      conversationEl.innerHTML = '';
+      const chat = getActiveChat();
+      const hasMessages = !!(chat && chat.messages.length);
+      welcomeEl.hidden = hasMessages;
+      if (chat) chat.messages.forEach(message => addMessage(message.role === 'model' ? 'assistant' : 'user', message.text));
+      renderHistory();
+      contentArea.scrollTop = contentArea.scrollHeight;
+    }
+    function renderHistory(filter = '') {
+      const list = $('#historyList');
+      const q = filter.trim().toLowerCase();
+      const filtered = chats.filter(chat => chat.title.toLowerCase().includes(q));
+      list.innerHTML = '';
+      $('#historyCount').textContent = String(chats.length);
+      filtered.slice(0, 30).forEach(chat => {
+        const button = document.createElement('button');
+        button.className = `history-item${chat.id === activeChatId ? ' current' : ''}`;
+        button.textContent = chat.title;
+        button.title = chat.title;
+        button.addEventListener('click', () => { activeChatId = chat.id; renderChat(); closeSidebar(); });
+        list.appendChild(button);
+      });
+    }
+    function showToast(message) {
+      const toast = $('#toast'); toast.textContent = message; toast.classList.add('show');
+      clearTimeout(showToast.timer); showToast.timer = setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+    function setBusy(value) { busy = value; sendButton.disabled = value; input.disabled = value; }
+    async function sendMessage(text) {
+      const clean = String(text || '').trim();
+      if (!clean || busy) return;
+      const chat = ensureChat();
+      chat.messages.push({ role: 'user', text: clean });
+      if (chat.messages.length === 1) chat.title = clean.length > 42 ? clean.slice(0, 42).trim() + '…' : clean;
+      chat.updatedAt = Date.now();
+      saveChats();
+      welcomeEl.hidden = true;
+      addMessage('user', clean);
+      input.value = ''; resizeInput();
+      const pending = addMessage('assistant', '', true);
+      setBusy(true);
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: chat.messages.map(message => ({ role: message.role, text: message.text })) })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `Request failed (${response.status}).`);
+        const answer = String(data.answer || '').trim();
+        if (!answer) throw new Error('KarkiAI received an empty answer. Please try again.');
+        pending.body.innerHTML = renderBasicMarkdown(answer);
+        chat.messages.push({ role: 'model', text: answer });
+        chat.updatedAt = Date.now(); saveChats(); renderHistory($('#historySearch').value);
+      } catch (error) {
+        pending.body.textContent = error.message || 'Something went wrong. Please try again.';
+        pending.body.style.color = '#a04444';
+        showToast('Message could not be sent');
+      } finally {
+        setBusy(false); input.focus(); contentArea.scrollTop = contentArea.scrollHeight;
+      }
+    }
+    function resizeInput() { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 180)}px`; }
+    function createNewChat() { activeChatId = null; renderChat(); input.value = ''; resizeInput(); input.focus(); closeSidebar(); }
+    function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+    function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('show'); }
+
+    form.addEventListener('submit', event => { event.preventDefault(); sendMessage(input.value); });
+    input.addEventListener('input', resizeInput);
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); form.requestSubmit(); }
+    });
+    $('#newChat').addEventListener('click', createNewChat);
+    $('#clearChat').addEventListener('click', () => {
+      const chat = getActiveChat();
+      if (!chat) return;
+      chats = chats.filter(item => item.id !== chat.id); activeChatId = null; saveChats(); renderChat(); showToast('Conversation cleared');
+    });
+    $('#exportChat').addEventListener('click', () => {
+      const chat = getActiveChat();
+      if (!chat || !chat.messages.length) { showToast('There is no conversation to export'); return; }
+      const content = chat.messages.map(message => `${message.role === 'user' ? 'You' : 'KarkiAI'}:\n${message.text}`).join('\n\n');
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob); const link = document.createElement('a');
+      link.href = url; link.download = `${chat.title.replace(/[^a-z0-9-_]/gi, '-').slice(0, 40) || 'karkiai-chat'}.txt`;
+      link.click(); URL.revokeObjectURL(url);
+    });
+    $('#historySearch').addEventListener('input', event => renderHistory(event.target.value));
+    $('#openSidebar').addEventListener('click', openSidebar);
+    $('#collapseSidebar').addEventListener('click', closeSidebar);
+    overlay.addEventListener('click', closeSidebar);
+    $('#profileButton').addEventListener('click', () => showToast('You are using your personal KarkiAI workspace'));
+    document.querySelectorAll('.suggestion').forEach(button => button.addEventListener('click', () => {
+      input.value = button.dataset.prompt || ''; resizeInput(); input.focus();
+    }));
+    document.querySelectorAll('.nav-link').forEach(link => link.addEventListener('click', event => {
+      event.preventDefault();
+      const section = link.dataset.section;
+      document.querySelectorAll('.nav-link').forEach(item => item.classList.toggle('active', item === link));
+      if (section === 'History') { $('#historySearch').focus(); showToast('Your recent conversations are in the sidebar'); }
+      else if (section !== 'Home') showToast(`${section} will be available in a future update`);
+      else createNewChat();
+      closeSidebar();
+    }));
+    // Keep the composer visible when the on-screen keyboard opens on mobile browsers.
+    if (window.visualViewport) {
+      const updateViewport = () => {
+        const viewport = window.visualViewport;
+        if (window.innerWidth <= 680) {
+          document.documentElement.style.setProperty('--visual-height', `${viewport.height}px`);
+          if (document.activeElement === input) requestAnimationFrame(() => contentArea.scrollTop = contentArea.scrollHeight);
+        }
+      };
+      window.visualViewport.addEventListener('resize', updateViewport);
+      window.visualViewport.addEventListener('scroll', updateViewport);
+    }
+    renderChat();
+  </script>
+</body>
+</html>
