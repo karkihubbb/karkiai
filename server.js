@@ -114,12 +114,6 @@ async function askPollinations(messages) {
 }
 
 app.post('/api/chat', async (req, res) => {
-  if (!hasCloudKey()) {
-    return res.status(503).json({
-      error: 'Cloud AI key is missing. Add GROQ_API_KEY in Render Environment.'
-    });
-  }
-
   const incoming = req.body?.messages;
   if (!Array.isArray(incoming) || incoming.length === 0) {
     return res.status(400).json({ error: 'Please send a message.' });
