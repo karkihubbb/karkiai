@@ -983,7 +983,7 @@ function renderChat() {
 }
 
 
-async function getLocalEngine() {
+async function getLocalEngine(onProgress = () => {}) {
   if (localEngine) return localEngine;
   if (localEnginePromise) return localEnginePromise;
   if (!navigator.gpu) {
@@ -993,15 +993,18 @@ async function getLocalEngine() {
     const status = $('#connectionStatus');
     status.textContent = 'Loading local AI…';
     showToast('First-time setup: downloading the AI model. Keep this page open.');
+    onProgress('First-time setup: downloading the AI model. This can take several minutes. Keep this page open.');
     const webllm = await import('https://esm.run/@mlc-ai/web-llm');
     const engine = await webllm.CreateMLCEngine(LOCAL_MODEL, {
       initProgressCallback: progress => {
         const message = progress.text || 'Preparing local AI…';
         status.textContent = message.length > 30 ? message.slice(0, 27) + '…' : message;
+        onProgress(message);
       }
     });
     localEngine = engine;
     status.textContent = 'Local AI ready';
+    onProgress('AI is ready. Generating your reply…');
     return engine;
   })();
   try {
@@ -1074,7 +1077,7 @@ async function sendMessage(raw) {
   renderHistory();
 
   try {
-    const engine = await getLocalEngine();
+    const engine = await getLocalEngine(message => { pending.body.textContent = message; });
     const result = await engine.chat.completions.create({
       messages: [
         {
