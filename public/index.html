@@ -944,22 +944,9 @@ let activeChatId = null;
 let busy = false;
 
 
-function loadChats() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    return Array.isArray(saved) ? saved : [];
-  } catch {
-    return [];
-  }
-}
+function loadChats() { return []; }
 
-function saveChats() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
-  } catch {
-    showToast('Could not save chat history.');
-  }
-}
+function saveChats() { /* Chat history is never saved. */ }
 
 function makeId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -1324,8 +1311,8 @@ async function checkConnection() {
     const response = await fetch('/api/health');
     const data = await response.json();
     if (!response.ok || !data.ok) throw new Error('Cloud server unavailable');
-    status.textContent = data.apiKeyConfigured ? 'Cloud server connected' : 'Cloud AI key missing';
-    status.classList.toggle('error', !data.apiKeyConfigured);
+    status.textContent = 'CLOUD SERVER READY';
+    status.classList.remove('error');
   } catch {
     status.textContent = 'CLOUD SERVER OFFLINE';
     status.classList.add('error');
