@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#09131b">
 <title>KarkiAI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -822,6 +822,57 @@ body{background:linear-gradient(135deg,#f8f4ed 0%,#eee7dc 100%)}
 .voice-toggle[aria-pressed="false"]{background:#eee8df;border-color:#ded6c9;color:#827b70}
 @media(max-width:760px){.voice-toggle{padding:7px 9px;font-size:9px}.status{display:none}}
 
+
+/* FINAL DARK GLASS DESIGN */
+:root{color-scheme:dark;--bg:#07131a;--ink:#e8f2f3;--muted:#8aa1a7;--line:#20343b;--accent:#42d6b2;--soft:#13272d}
+html,body{background:#07131a;color:#e8f2f3}
+body{background:radial-gradient(ellipse at 50% -18%,#16443f 0,transparent 42%),radial-gradient(ellipse at 100% 100%,#142c48 0,transparent 38%),#07131a}
+.main{background:transparent}
+.topbar{background:#091a20eF;border-bottom:1px solid #1c353a;backdrop-filter:blur(18px)}
+.top-identity strong{color:#f0fbf8}
+.top-identity .chat-title{color:#8aa8a5}
+.model-label{background:#102e2c;border-color:#23564e;color:#62e4c0}
+.cloud-dot{background:#4ce0b7;box-shadow:0 0 0 3px #4ce0b71c}
+.status{color:#7acdb7}
+.status.error{color:#ff9a91}
+.chat-scroll{scrollbar-color:#29434a transparent}
+.welcome .orb{background:radial-gradient(circle at 32% 25%,#f0fffb 0 8%,#a7f6df 29%,#36c9a8 64%,#15556a 100%);box-shadow:0 0 0 10px #37d6b21a,0 14px 38px #20c5a333}
+.welcome .eyebrow{color:#63d9bd}
+.welcome h1{color:#f1faf8;background:none;-webkit-text-fill-color:initial}
+.welcome h1 span{background:linear-gradient(100deg,#52e4bc,#7bcaf6 70%,#b5a4ff);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.welcome p{color:#9ab4b4}
+.suggestion{background:linear-gradient(145deg,#10262c,#0d2029);border:1px solid #234047;box-shadow:0 10px 28px #0003}
+.suggestion:hover{background:#153139;border-color:#3bb99d;box-shadow:0 12px 32px #0004}
+.suggestion-icon{background:#16423b;color:#65e3c1}
+.suggestion:nth-child(2) .suggestion-icon{background:#153b51;color:#78d3f5}
+.suggestion:nth-child(3) .suggestion-icon{background:#29294c;color:#b8a8ff}
+.suggestion:nth-child(4) .suggestion-icon{background:#493725;color:#ffc58f}
+.suggestion strong{color:#eaf8f4}.suggestion small{color:#91b0ae}
+.message-avatar{background:linear-gradient(145deg,#174b43,#17445a);border:1px solid #2b7469}
+.message-avatar svg path{fill:#65e4c2}
+.message-body{color:#d5e8e5}
+.message-body h1,.message-body h2,.message-body h3{color:#f0faf7}
+.message-body a{color:#65d9c0}
+.message-body code{background:#17383b;color:#9af0d9}
+.code-block{background:#0b2229;border-color:#28464a}
+.code-header{border-color:#28464a;color:#9ab7b2}
+.code-block pre{color:#d4ebe5}
+.message.user .message-body{background:linear-gradient(130deg,#123c3b,#17364a);border:1px solid #28685f;color:#eafff9;box-shadow:0 8px 22px #0003}
+.message-tools button{color:#7cb9ad}
+.typing i{background:#54e5bb}
+.composer-area{background:linear-gradient(transparent,#07131a 25%)}
+.composer{background:#0c2229;border:1px solid #2a4c4b;box-shadow:0 15px 45px #0005}
+.composer:focus-within{border-color:#4dd9b4;box-shadow:0 0 0 4px #36d9b51a,0 15px 45px #0005}
+.composer textarea{color:#eafff9}
+.composer textarea::placeholder{color:#789b99}
+.hint,.disclaimer{color:#789b99}
+.send{background:linear-gradient(135deg,#3ee3b3,#34a9c7);color:#062c2b;box-shadow:0 7px 20px #28cda844}
+.send:hover:not(:disabled){filter:brightness(1.1)}
+.toast{background:#d9fff3;color:#07352e}
+.voice-toggle{background:#102e2c;border-color:#28685d;color:#73e7c7}
+.voice-toggle[aria-pressed="false"]{background:#18272a;border-color:#35484a;color:#9aadaa}
+@media(max-width:760px){.topbar{background:#091a20f5}.composer-area{background:linear-gradient(transparent,#07131a 20%)}}
+
 </style>
 </head>
 
@@ -952,7 +1003,7 @@ let busy = false;
 let localEngine = null;
 let engineLoading = null;
 let voiceEnabled = true;
-const LOCAL_MODEL = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
+const LOCAL_MODEL = 'Llama-3.2-1B-Instruct-q4f16_1-MLC';
 const LOCAL_SYSTEM_PROMPT = 'You are KarkiAI, a friendly and helpful general-purpose AI assistant. Answer clearly and accurately. Explain things in simple language when useful. Be honest when uncertain.';
 
 
@@ -1225,8 +1276,11 @@ async function getLocalEngine() {
   }
   engineLoading = (async () => {
     $('#connectionStatus').textContent = 'DOWNLOADING AI MODEL…';
-    const { CreateMLCEngine } = await import('https://esm.run/@mlc-ai/web-llm');
-    const engine = await CreateMLCEngine(LOCAL_MODEL, {
+    const { CreateMLCEngine, prebuiltAppConfig } = await import('https://esm.run/@mlc-ai/web-llm');
+    const available = prebuiltAppConfig.model_list.map(item => item.model_id);
+    const selectedModel = available.includes(LOCAL_MODEL) ? LOCAL_MODEL : 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
+    if (!available.includes(selectedModel)) throw new Error('This AI model is not available from the model provider. Refresh and try again.');
+    const engine = await CreateMLCEngine(selectedModel, {
       initProgressCallback: progress => {
         const percent = Math.max(0, Math.min(100, Math.round((progress.progress || 0) * 100)));
         $('#connectionStatus').textContent = progress.text
@@ -1340,9 +1394,12 @@ async function sendMessage(raw) {
     saveChats();
 
   } catch (error) {
-    pending.body.textContent = error.message || 'Could not reach KarkiAI.';
-    pending.body.style.color = '#ad625d';
-    showToast('KarkiAI could not answer');
+    const reason = error?.message || String(error) || 'Unknown error';
+    pending.body.textContent = 'KarkiAI could not start on this device. ' + reason + ' Please use an updated Chrome or Edge browser and keep this tab open while the AI model loads.';
+    pending.body.style.color = '#f0a49a';
+    $('#connectionStatus').textContent = 'AI SETUP NEEDS ATTENTION';
+    $('#connectionStatus').classList.add('error');
+    showToast('Check the AI setup message above');
   } finally {
     setBusy(false);
     resizeInput();
