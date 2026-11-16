@@ -924,11 +924,11 @@ body{background:radial-gradient(ellipse at 50% -18%,#16443f 0,transparent 42%),r
       <div class="top-left">
         <button class="icon-btn mobile-menu" id="mobileMenu">☰</button>
         <div class="top-identity"><strong>KarkiAI</strong><span class="chat-title" id="chatTitle">New chat</span></div>
-        <div class="model-label"><span class="cloud-dot"></span> CLOUD AI</div>
+        <div class="model-label"><span class="cloud-dot"></span> NO-KEY CHAT</div>
       </div>
       <div class="top-actions">
         <button class="voice-toggle" id="voiceToggle" type="button" aria-pressed="true" title="Turn spoken replies on or off">🔊 <span>Voice on</span></button>
-        <span class="status" id="connectionStatus">Preparing on-device AI</span>
+        <span class="status" id="connectionStatus">READY ON THIS DEVICE</span>
         <button class="icon-btn" id="exportChat" title="Export chat">↧</button>
       </div>
     </header>
@@ -943,7 +943,7 @@ body{background:radial-gradient(ellipse at 50% -18%,#16443f 0,transparent 42%),r
         </div>
         <div class="eyebrow">✦ &nbsp; YOUR SPACE FOR BIG IDEAS &nbsp; ✦</div>
         <h1>Big ideas start<br><span>with one message.</span></h1>
-        <p>I’m KarkiAI. Bring a question, a wild idea, or a tricky problem.<br class="desktop-break"> Let’s make something happen.</p>
+        <p>I’m KarkiAI. Ask me something, try a quick calculation, or start a conversation.<br class="desktop-break"> No API key or sign-in needed.</p>
 
         <div class="suggestions">
           <button class="suggestion" data-prompt="Help me brainstorm some creative ideas.">
@@ -978,7 +978,7 @@ body{background:radial-gradient(ellipse at 50% -18%,#16443f 0,transparent 42%),r
           </button>
         </div>
       </form>
-      <div class="disclaimer">KarkiAI can make mistakes. Verify important information.</div>
+      <div class="disclaimer">Basic offline chat · No API key · Limited built-in answers</div>
     </div>
   </main>
 </div>
@@ -1283,69 +1283,124 @@ function updateVoiceButton() {
   button.innerHTML = (voiceEnabled ? '🔊 <span>Voice on</span>' : '🔇 <span>Voice off</span>');
 }
 
+function localReply(prompt) {
+  const q = prompt.trim();
+  const lower = q.toLowerCase();
+  const now = new Date();
+
+  if (/^(hi|hello|hey|heya|good morning|good afternoon|good evening)\b/i.test(lower)) {
+    return "Hey! 👋 I'm KarkiAI. I can help with quick explanations, simple calculations, writing ideas, and everyday questions. What would you like to do?";
+  }
+  if (/\b(your name|who are you|what are you)\b/i.test(lower)) {
+    return "I'm KarkiAI, your simple built-in chat assistant. I work directly in this webpage, so no API key or account is needed. I can handle basic chat, quick calculations, and a few helpful tasks, but I don't have the knowledge or reasoning of a full AI model.";
+  }
+  if (/\b(time|date|today|day is it)\b/i.test(lower) && /\b(what|tell|current|today|date|time|day)\b/i.test(lower)) {
+    return "Your device's current date and time is: " + now.toLocaleString() + ".";
+  }
+  if (/\b(thank you|thanks|thx)\b/i.test(lower)) return "You're welcome! 😊 What else can I help with?";
+  if (/\b(joke|make me laugh|funny)\b/i.test(lower)) {
+    const jokes = [
+      "Why did the computer go to the doctor? It had a virus. 😄",
+      "Why do programmers prefer dark mode? Because light attracts bugs. 🐛",
+      "I told my laptop I needed a break. It said, “No problem,” and froze. 😅"
+    ];
+    return jokes[Math.floor(Math.random() * jokes.length)];
+  }
+  if (/\b(help|what can you do|capabilities)\b/i.test(lower)) {
+    return "Here's what this no-key version can do:\n\n- Answer greetings and simple chat\n- Calculate basic arithmetic\n- Tell you your device's date and time\n- Share a quick joke\n- Give simple writing starters and basic explanations\n\nFor open-ended questions, coding help, current facts, or detailed research, a real AI model is needed. I won't pretend to know an answer when I don't.";
+  }
+
+  const mathText = q.replace(/,/g, "").replace(/[?=]/g, " ").trim();
+  if (/^(?:what is\s+|calculate\s+|solve\s+)?[-+*/().\d\s%]+$/i.test(mathText) && /\d/.test(mathText)) {
+    try {
+      const tokens = mathText.replace(/^(what is|calculate|solve)\s+/i, "").match(/\d+(?:\.\d+)?|[()+\-*/%]/g) || [];
+      let pos = 0;
+      function primary() {
+        if (tokens[pos] === "+" || tokens[pos] === "-") {
+          const sign = tokens[pos++] === "-" ? -1 : 1;
+          return sign * primary();
+        }
+        if (tokens[pos] === "(") {
+          pos++;
+          const value = expression();
+          if (tokens[pos++] !== ")") throw new Error("parenthesis");
+          return value;
+        }
+        const value = Number(tokens[pos++]);
+        if (!Number.isFinite(value)) throw new Error("number");
+        return value;
+      }
+      function term() {
+        let value = primary();
+        while (["*", "/", "%"].includes(tokens[pos])) {
+          const op = tokens[pos++];
+          const rhs = primary();
+          if ((op === "/" || op === "%") && rhs === 0) throw new Error("zero");
+          value = op === "*" ? value * rhs : op === "/" ? value / rhs : value % rhs;
+        }
+        return value;
+      }
+      function expression() {
+        let value = term();
+        while (tokens[pos] === "+" || tokens[pos] === "-") {
+          const op = tokens[pos++];
+          const rhs = term();
+          value = op === "+" ? value + rhs : value - rhs;
+        }
+        return value;
+      }
+      const answer = expression();
+      if (pos === tokens.length && Number.isFinite(answer)) {
+        return "The answer is **" + Number(answer.toPrecision(12)) + "**.";
+      }
+    } catch (_) {}
+  }
+
+  if (/\b(write|draft|compose)\b/i.test(lower) && /\b(email|message|letter|caption|bio|thank)\b/i.test(lower)) {
+    return "Sure — here's a simple starting point you can edit:\n\n“Hi [Name],\n\nI hope you're doing well. I'm reaching out about [your topic]. Please let me know when you have a chance.\n\nThank you,\n[Your name]”\n\nTell me the recipient and purpose if you'd like a more specific draft.";
+  }
+  if (/\b(explain|meaning of|what is)\b/i.test(lower) && /\b(ai|artificial intelligence)\b/i.test(lower)) {
+    return "Artificial intelligence (AI) is technology that lets computers perform tasks that usually require human-like abilities, such as understanding language, recognizing patterns, and making predictions. Some AI systems follow fixed rules; generative AI models learn patterns from large datasets to create new text, images, or code.";
+  }
+  if (/\b(explain|meaning of|what is)\b/i.test(lower) && /\b(internet|website|browser)\b/i.test(lower)) {
+    return "The internet is a worldwide network connecting computers and devices. A website is a collection of pages hosted on computers called servers. A browser, such as Chrome, requests those pages and displays them for you.";
+  }
+  return "I received your message: “" + q + "”\n\nThis version of KarkiAI runs without an API key, so it can reliably handle basic chat and built-in tasks, but it doesn't have a generative AI model behind it. I don't want to make up an answer. For a genuinely intelligent answer to this question, the site needs access to an AI model.";
+}
+
 async function sendMessage(raw) {
   const text = String(raw || '').trim();
-
   if (!text || busy) return;
 
   const chat = getOrCreateChat();
-
   chat.messages.push({ role: 'user', text });
-
   if (chat.messages.length === 1) {
     chat.title = text.length > 42 ? text.slice(0, 42) + '…' : text;
   }
-
   chat.updatedAt = Date.now();
   saveChats();
-
   welcome.hidden = true;
-  $('#chatTitle').textContent = 'Your AI assistant';
-
+  $('#chatTitle').textContent = 'Your assistant';
   addMessage('user', text);
-
   input.value = '';
   resizeInput();
-
   const pending = addMessage('model', '', true);
-
   setBusy(true);
   renderHistory();
 
   try {
-    pending.body.textContent = 'Connecting to KarkiAI…';
-    $('#connectionStatus').textContent = 'CONNECTING TO CLOUD AI';
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: chat.messages.slice(-12).map(message => ({
-          role: message.role === 'model' ? 'assistant' : 'user',
-          text: message.text
-        }))
-      }),
-      signal: AbortSignal.timeout(90000)
-    });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const detail = result.details?.join(' | ');
-      throw new Error(detail || result.error || ('Server error: ' + response.status));
-    }
-    const answer = String(result.answer || '').trim();
-    if (!answer) throw new Error('KarkiAI returned an empty response. Please try again.');
-    $('#connectionStatus').textContent = (result.provider || 'CLOUD AI').toUpperCase() + ' CONNECTED';
+    $('#connectionStatus').textContent = 'RUNNING ON THIS DEVICE';
     $('#connectionStatus').classList.remove('error');
-
+    await new Promise(resolve => setTimeout(resolve, 180));
+    const answer = localReply(text);
     pending.body.innerHTML = renderText(answer);
 
     const tools = document.createElement('div');
     tools.className = 'message-tools';
-
     const copy = document.createElement('button');
     copy.type = 'button';
     copy.textContent = 'Copy response';
     copy.addEventListener('click', () => copyText(answer));
-
     const speak = document.createElement('button');
     speak.type = 'button';
     speak.textContent = '🔊 Speak';
@@ -1357,22 +1412,18 @@ async function sendMessage(raw) {
       voiceEnabled = wasEnabled;
       updateVoiceButton();
     });
-
     tools.append(copy, speak);
     pending.row.append(tools);
     speakText(answer);
-
     chat.messages.push({ role: 'model', text: answer });
     chat.updatedAt = Date.now();
     saveChats();
-
   } catch (error) {
     const reason = error?.message || String(error) || 'Unknown error';
-    pending.body.textContent = 'KarkiAI could not reach its cloud AI service. ' + reason + ' Please try again in a moment.';
+    pending.body.textContent = 'Something went wrong: ' + reason;
     pending.body.style.color = '#f0a49a';
-    $('#connectionStatus').textContent = 'CLOUD AI TEMPORARILY UNAVAILABLE';
+    $('#connectionStatus').textContent = 'CHAT ERROR';
     $('#connectionStatus').classList.add('error');
-    showToast('Check the AI setup message above');
   } finally {
     setBusy(false);
     resizeInput();
@@ -1400,19 +1451,10 @@ function closeSidebar() {
   $('#overlay').classList.remove('show');
 }
 
-async function checkConnection() {
+function checkConnection() {
   const status = $('#connectionStatus');
-  status.textContent = 'CHECKING CLOUD AI…';
-  try {
-    const response = await fetch('/api/health', { cache: 'no-store' });
-    const data = await response.json();
-    if (!response.ok || !data.ok) throw new Error('Server unavailable');
-    status.textContent = data.apiKeyConfigured ? data.provider.toUpperCase() + ' READY' : 'CLOUD AI READY';
-    status.classList.remove('error');
-  } catch {
-    status.textContent = 'SERVER CONNECTION ISSUE';
-    status.classList.add('error');
-  }
+  status.textContent = 'READY ON THIS DEVICE';
+  status.classList.remove('error');
 }
 
 /* EVENTS */
