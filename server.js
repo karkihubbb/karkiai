@@ -1,155 +1,133 @@
-
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-
-const MODELS = [
-  PRIMARY_MODEL,
-  'gemini-3.7-flash',
-  'gemini-3.5-flash-lite'
-].filter((model, index, list) => model && list.indexOf(model) === index);
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+const hasCloudKey = () => Boolean(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY);
+
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     service: 'KarkiAI',
-    apiKeyConfigured: Boolean(process.env.GEMINI_API_KEY)
+    apiKeyConfigured: hasCloudKey(),
+    provider: process.env.GROQ_API_KEY ? 'Groq' : (process.env.GEMINI_API_KEY ? 'Gemini' : null)
   });
 });
 
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const SYSTEM_PROMPT = 'You are KarkiAI, a helpful, capable, friendly general-purpose AI assistant. Answer clearly and professionally. Be accurate, explain uncertainty honestly, and use readable Markdown when helpful. Never claim to browse the web or perform actions unless the app provides that capability.';
 
-async function askGemini(model, apiKey, contents) {
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+async function askGroq(messages) {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+    },
+    signal: AbortSignal.timeout(60000),
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
+      max_tokens: 2048,
+      temperature: 0.7
+    })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = data?.error?.message || `Groq API error: ${response.status}`;
+    const error = new Error(detail);
+    error.status = response.status;
+    throw error;
+  }
+
+  const answer = data?.choices?.[0]?.message?.content?.trim();
+  if (!answer) throw new Error('Groq returned an empty answer. Please try again.');
+  return { answer, model: data.model || GROQ_MODEL, provider: 'Groq' };
+}
+
+async function askGemini(messages) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
+  const contents = messages.map(message => ({
+    role: message.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: message.content }]
+  }));
 
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-goog-api-key': apiKey
+      'x-goog-api-key': process.env.GEMINI_API_KEY
     },
     signal: AbortSignal.timeout(60000),
     body: JSON.stringify({
-      systemInstruction: {
-        parts: [{
-          text: 'You are KarkiAI, a helpful, capable, friendly general-purpose AI assistant. Answer clearly and professionally. Be accurate, explain uncertainty honestly, and use readable Markdown when helpful. Never claim to browse the web or perform actions unless the app provides that capability.'
-        }]
-      },
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
       contents,
-      generationConfig: {
-        maxOutputTokens: 4096
-      }
+      generationConfig: { maxOutputTokens: 2048 }
     })
   });
 
   const data = await response.json().catch(() => ({}));
-  return { response, data };
+  if (!response.ok) {
+    const detail = data?.error?.message || `Gemini API error: ${response.status}`;
+    const error = new Error(detail);
+    error.status = response.status;
+    throw error;
+  }
+
+  const answer = (data.candidates || [])
+    .flatMap(candidate => candidate.content?.parts || [])
+    .map(part => part.text || '')
+    .join('\n')
+    .trim();
+  if (!answer) throw new Error('Gemini returned an empty answer. Please try again.');
+  return { answer, model: GEMINI_MODEL, provider: 'Gemini' };
 }
 
 app.post('/api/chat', async (req, res) => {
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
+  if (!hasCloudKey()) {
     return res.status(503).json({
-      error: 'Gemini API key is missing. Add GEMINI_API_KEY in Render Environment.'
+      error: 'Cloud AI key is missing. Add GROQ_API_KEY in Render Environment.'
     });
   }
 
   const incoming = req.body?.messages;
-
   if (!Array.isArray(incoming) || incoming.length === 0) {
-    return res.status(400).json({
-      error: 'Please send a message.'
-    });
+    return res.status(400).json({ error: 'Please send a message.' });
   }
 
-  const contents = incoming.slice(-20).map(message => ({
-    role: message?.role === 'model' ? 'model' : 'user',
-    parts: [{
-      text: String(message?.text || '').slice(0, 12000)
-    }]
-  })).filter(message => message.parts[0].text.trim());
+  const messages = incoming.slice(-20).map(message => ({
+    role: message?.role === 'model' || message?.role === 'assistant' ? 'assistant' : 'user',
+    content: String(message?.text || message?.content || '').slice(0, 12000)
+  })).filter(message => message.content.trim());
 
-  if (!contents.length || contents[contents.length - 1].role !== 'user') {
-    return res.status(400).json({
-      error: 'The latest message must be from you.'
-    });
+  if (!messages.length || messages[messages.length - 1].role !== 'user') {
+    return res.status(400).json({ error: 'The latest message must be from you.' });
   }
 
   try {
-    for (let i = 0; i < MODELS.length; i++) {
-      const model = MODELS[i];
-      const { response, data } =
-        await askGemini(model, apiKey, contents);
-
-      if (response.ok) {
-        const answer = (data.candidates || [])
-          .flatMap(candidate => candidate.content?.parts || [])
-          .map(part => part.text || '')
-          .join('\n')
-          .trim();
-
-        if (answer) {
-          return res.json({ answer, model });
-        }
-
-        if (i === MODELS.length - 1) {
-          return res.status(502).json({
-            error: 'Gemini returned an empty answer. Please try again.'
-          });
-        }
-
-        continue;
-      }
-
-      const message = data?.error?.message ||
-        `Gemini API error: ${response.status}`;
-
-      if (response.status === 503 || response.status === 404) {
-        if (i < MODELS.length - 1) {
-          await sleep(500);
-          continue;
-        }
-
-        return res.status(503).json({
-          error: 'Google Gemini is temporarily overloaded on the available models. Please wait and try again.'
-        });
-      }
-
-      if (response.status === 429) {
-        return res.status(429).json({
-          error: 'Gemini has reached an API rate or quota limit. Please wait for the limit to reset. Details: ' + message
-        });
-      }
-
-      if (response.status === 401 || response.status === 403) {
-        return res.status(response.status).json({
-          error: 'Google rejected the API key or its permissions. Check GEMINI_API_KEY in Render. Details: ' + message
-        });
-      }
-
-      return res.status(502).json({ error: message });
+    // Prefer Groq when configured; retain Gemini as a compatibility fallback.
+    if (process.env.GROQ_API_KEY) {
+      const result = await askGroq(messages);
+      return res.json(result);
     }
 
-    return res.status(503).json({
-      error: 'Gemini is temporarily unavailable. Please try again.'
-    });
-
+    const result = await askGemini(messages);
+    return res.json(result);
   } catch (error) {
-    console.error('KarkiAI error:', error.message);
-
-    return res.status(503).json({
-      error: 'Could not connect to Google Gemini. Please try again.'
-    });
+    console.error('KarkiAI cloud AI error:', error.message);
+    const status = error.status === 429 ? 429 : (error.status === 401 || error.status === 403 ? error.status : 502);
+    let message = error.message || 'The cloud AI service is temporarily unavailable.';
+    if (status === 429) message = 'The AI provider rate or usage limit has been reached. Please wait and try again. Details: ' + message;
+    if (status === 401 || status === 403) message = 'The cloud AI key was rejected. Check the provider key in Render Environment.';
+    return res.status(status).json({ error: message });
   }
 });
 
