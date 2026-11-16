@@ -924,7 +924,7 @@ body{background:radial-gradient(ellipse at 50% -18%,#16443f 0,transparent 42%),r
       <div class="top-left">
         <button class="icon-btn mobile-menu" id="mobileMenu">☰</button>
         <div class="top-identity"><strong>KarkiAI</strong><span class="chat-title" id="chatTitle">New chat</span></div>
-        <div class="model-label"><span class="cloud-dot"></span> ON-DEVICE AI</div>
+        <div class="model-label"><span class="cloud-dot"></span> CLOUD AI</div>
       </div>
       <div class="top-actions">
         <button class="voice-toggle" id="voiceToggle" type="button" aria-pressed="true" title="Turn spoken replies on or off">🔊 <span>Voice on</span></button>
@@ -1003,8 +1003,6 @@ let busy = false;
 let localEngine = null;
 let engineLoading = null;
 let voiceEnabled = true;
-const LOCAL_MODEL = 'Llama-3.2-1B-Instruct-q4f32_1-MLC';
-const LOCAL_SYSTEM_PROMPT = 'You are KarkiAI, a friendly and helpful general-purpose AI assistant. Answer clearly and accurately. Explain things in simple language when useful. Be honest when uncertain.';
 
 
 function loadChats() { return []; }
@@ -1268,37 +1266,6 @@ function setBusy(value) {
   sendButton.disabled = value || !input.value.trim();
 }
 
-async function getLocalEngine() {
-  if (localEngine) return localEngine;
-  if (engineLoading) return engineLoading;
-  if (!navigator.gpu) {
-    throw new Error('This browser or device does not support WebGPU. Try the latest Chrome or Edge on a supported device.');
-  }
-  engineLoading = (async () => {
-    $('#connectionStatus').textContent = 'DOWNLOADING AI MODEL…';
-    const { CreateMLCEngine, prebuiltAppConfig } = await import('https://esm.run/@mlc-ai/web-llm');
-    const available = prebuiltAppConfig.model_list.map(item => item.model_id);
-    const selectedModel = available.includes(LOCAL_MODEL) ? LOCAL_MODEL : 'Qwen2.5-0.5B-Instruct-q4f32_1-MLC';
-    if (!available.includes(selectedModel)) throw new Error('This AI model is not available from the model provider. Refresh and try again.');
-    const engine = await CreateMLCEngine(selectedModel, {
-      initProgressCallback: progress => {
-        const percent = Math.max(0, Math.min(100, Math.round((progress.progress || 0) * 100)));
-        $('#connectionStatus').textContent = progress.text
-          ? ('AI MODEL ' + percent + '%')
-          : 'PREPARING AI…';
-      }
-    });
-    localEngine = engine;
-    $('#connectionStatus').textContent = 'ON-DEVICE AI READY';
-    return engine;
-  })();
-  try { return await engineLoading; }
-  catch (error) {
-    engineLoading = null;
-    throw error;
-  }
-}
-
 function speakText(text) {
   if (!('speechSynthesis' in window) || !voiceEnabled) return;
   window.speechSynthesis.cancel();
@@ -1346,22 +1313,28 @@ async function sendMessage(raw) {
   renderHistory();
 
   try {
-    pending.body.textContent = 'Preparing KarkiAI on your device…';
-    const engine = await getLocalEngine();
-    pending.body.textContent = 'KarkiAI is thinking…';
-    const result = await engine.chat.completions.create({
-      messages: [
-        { role: 'system', content: LOCAL_SYSTEM_PROMPT },
-        ...chat.messages.slice(-12).map(message => ({
+    pending.body.textContent = 'Connecting to KarkiAI…';
+    $('#connectionStatus').textContent = 'CONNECTING TO CLOUD AI';
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: chat.messages.slice(-12).map(message => ({
           role: message.role === 'model' ? 'assistant' : 'user',
-          content: message.text
+          text: message.text
         }))
-      ],
-      temperature: 0.7,
-      max_tokens: 1024
+      }),
+      signal: AbortSignal.timeout(90000)
     });
-    const answer = String(result.choices?.[0]?.message?.content || '').trim();
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const detail = result.details?.join(' | ');
+      throw new Error(detail || result.error || ('Server error: ' + response.status));
+    }
+    const answer = String(result.answer || '').trim();
     if (!answer) throw new Error('KarkiAI returned an empty response. Please try again.');
+    $('#connectionStatus').textContent = (result.provider || 'CLOUD AI').toUpperCase() + ' CONNECTED';
+    $('#connectionStatus').classList.remove('error');
 
     pending.body.innerHTML = renderText(answer);
 
@@ -1395,9 +1368,9 @@ async function sendMessage(raw) {
 
   } catch (error) {
     const reason = error?.message || String(error) || 'Unknown error';
-    pending.body.textContent = 'KarkiAI could not start on this device. ' + reason + ' This can be a graphics-driver/WebGPU shader issue. Try updating your graphics driver and Chrome, then reload the page.';
+    pending.body.textContent = 'KarkiAI could not reach its cloud AI service. ' + reason + ' Please try again in a moment.';
     pending.body.style.color = '#f0a49a';
-    $('#connectionStatus').textContent = 'AI SETUP NEEDS ATTENTION';
+    $('#connectionStatus').textContent = 'CLOUD AI TEMPORARILY UNAVAILABLE';
     $('#connectionStatus').classList.add('error');
     showToast('Check the AI setup message above');
   } finally {
@@ -1429,8 +1402,17 @@ function closeSidebar() {
 
 async function checkConnection() {
   const status = $('#connectionStatus');
-  status.textContent = navigator.gpu ? 'ON-DEVICE AI READY' : 'WEBGPU NOT AVAILABLE';
-  status.classList.toggle('error', !navigator.gpu);
+  status.textContent = 'CHECKING CLOUD AI…';
+  try {
+    const response = await fetch('/api/health', { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error('Server unavailable');
+    status.textContent = data.apiKeyConfigured ? data.provider.toUpperCase() + ' READY' : 'CLOUD AI READY';
+    status.classList.remove('error');
+  } catch {
+    status.textContent = 'SERVER CONNECTION ISSUE';
+    status.classList.add('error');
+  }
 }
 
 /* EVENTS */
