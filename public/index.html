@@ -538,6 +538,8 @@ async function ask(msgs,signal,status){
     return j.answer.trim();
   }catch(e){
     if(signal.aborted)throw e;
+    const latestQuestion=hist.filter(m=>m.r==="user").slice(-1)[0]?.t||"";
+    if(FACT.test(latestQuestion))throw new Error("I couldn't reach Karki AI's live research server, so I won't guess about current facts. Please try again in a moment.");
     status("Trying backup AI service…");
   }
   const jobs=[];
