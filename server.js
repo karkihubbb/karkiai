@@ -203,6 +203,14 @@ app.post('/api/chat', async (req, res) => {
   }
 
   const latestQuestion = messages[messages.length - 1].content;
+  // KarkiAI instant greeting: avoid a slow model round-trip for simple greetings.
+  if (/^(hi|hello|hey|hiya|yo|namaste|नमस्ते)[!. ,]*$/i.test(latestQuestion.trim())) {
+    return res.json({
+      answer: 'Hey! 👋 How can I help you today?',
+      model: 'Karki AI instant reply',
+      provider: 'Karki AI'
+    });
+  }
   const asksAboutCreator = /\b(who\s+(?:is|was)\s+(?:your\s+)?(?:creator|owner|maker|developer)|who\s+(?:made|created|built|developed)\s+you|who\s+owns\s+you|your\s+(?:creator|owner|maker|developer|founder))\b/i.test(latestQuestion);
   if (asksAboutCreator) {
     return res.json({
