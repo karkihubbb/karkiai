@@ -22,31 +22,55 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-const SYSTEM_PROMPT = 'You are Karki AI, a helpful, capable, friendly general-purpose AI assistant. Answer naturally and clearly, with useful detail and readable Markdown. For current or time-sensitive facts, use the supplied live web search results as the primary evidence, state the date when relevant, and include clickable source links. Never invent current facts or claim to have searched if no results were supplied.';
+const SYSTEM_PROMPT = 'You are Karki AI, a helpful, capable, friendly general-purpose AI assistant. Answer naturally and clearly, with useful detail and readable Markdown. Your built-in knowledge may be outdated. For factual questions, especially anything about current people, offices, events, prices, dates, Nepal, or the Nepali calendar, use the supplied live web and Wikipedia results before answering. Treat current search results as more authoritative than old model knowledge. Prefer official government and primary sources; use Wikipedia as a helpful reference, not the sole authority. The current Gregorian year is 2026 and Nepal is in Bikram Sambat year 2083 (the 2083 BS year runs from April 2026 to April 2027). Do not confuse AD and BS dates. State the relevant date/year when useful, include clickable source links, and never invent current facts or claim to have searched if no results were supplied. If current sources are unavailable, clearly say you cannot verify the latest information.';
 
-
-// Lightweight live web search for questions about current events and changing facts.
+// Search factual questions, not just questions containing the word "latest".
 function needsLiveSearch(question) {
-  return /\\b(current|currently|latest|recent|today|tonight|this week|this month|right now|breaking|news|2026|2025|president|prime minister|who is .* (president|prime minister)|who won|results of|score|price|weather|election|stock|exchange rate|what happened today)\\b/i.test(question);
+  const q = String(question || '').trim();
+  if (!q || /^(hi|hello|hey|namaste|नमस्ते)[!. ]*$/i.test(q)) return false;
+  if (/^[\d\s+\-*/().%^×÷]+$/.test(q)) return false;
+  if (/\b(write|draft|compose|translate|rewrite|poem|story|joke|make me|create an image|generate an image|draw)\b/i.test(q)) return false;
+  return /\b(who|what|when|where|which|why|how|is|are|was|were|does|do|did|tell me|explain|define|meaning|capital|president|prime minister|population|history|current|currently|latest|recent|today|tonight|this week|this month|right now|breaking|news|2026|2083|nepal|nepali|bikram sambat|bs|ad|price|weather|election|stock|exchange rate|score|results)\b|[?؟]|(को हो|के हो|कहाँ|कहिले|कति|किन|बारे|को बारेमा|कसरी)/i.test(q);
 }
 function decodeHtml(value) {
-  return value.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  return value.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)));
 }
 async function searchWeb(query) {
   const url = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query);
-  const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; KarkiAI/1.0)', 'Accept': 'text/html' }, signal: AbortSignal.timeout(3500) });
+  const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; KarkiAI/1.0)', 'Accept': 'text/html' }, signal: AbortSignal.timeout(5000) });
   if (!response.ok) throw new Error('Search service returned ' + response.status);
   const html = await response.text();
   const results = [];
-  const pattern = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;
+  const pattern = /<a[^>]*class=["']result__a["'][^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let match;
   while ((match = pattern.exec(html)) && results.length < 5) {
     const rawUrl = decodeHtml(match[1]);
     let link = rawUrl;
     try { const parsed = new URL(rawUrl, 'https://duckduckgo.com'); link = parsed.searchParams.get('uddg') || rawUrl; } catch {}
     const title = decodeHtml(match[2].replace(/<[^>]+>/g, '').trim());
-    const snippet = decodeHtml(match[3].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
+    const rest = html.slice(pattern.lastIndex, pattern.lastIndex + 1800);
+    const sm = rest.match(/class=["']result__snippet["'][^>]*>([\s\S]*?)<\/(?:a|td|div)>/i);
+    const snippet = sm ? decodeHtml(sm[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()) : '';
     if (title && /^https?:\/\//i.test(link)) results.push({ title, snippet, url: link });
+  }
+  return results;
+}
+async function searchWikipedia(query) {
+  const lang = /[\u0900-\u097f]/.test(query) ? 'ne' : 'en';
+  const base = 'https://' + lang + '.wikipedia.org/w/api.php';
+  const params = new URLSearchParams({ action: 'query', list: 'search', srsearch: query, srlimit: '2', format: 'json', origin: '*' });
+  const response = await fetch(base + '?' + params, { headers: { 'User-Agent': 'KarkiAI/1.0 (knowledge assistant)' }, signal: AbortSignal.timeout(4500) });
+  if (!response.ok) throw new Error('Wikipedia search returned ' + response.status);
+  const data = await response.json();
+  const hits = data?.query?.search || [];
+  const results = [];
+  for (const hit of hits.slice(0, 2)) {
+    const p = new URLSearchParams({ action: 'query', prop: 'extracts|info', exintro: '1', explaintext: '1', exchars: '1200', inprop: 'url', pageids: String(hit.pageid), format: 'json', origin: '*' });
+    const pageResponse = await fetch(base + '?' + p, { headers: { 'User-Agent': 'KarkiAI/1.0 (knowledge assistant)' }, signal: AbortSignal.timeout(3500) });
+    if (!pageResponse.ok) continue;
+    const pageData = await pageResponse.json();
+    const page = pageData?.query?.pages?.[hit.pageid];
+    if (page?.extract) results.push({ title: page.title, snippet: page.extract, url: page.fullurl || 'https://' + lang + '.wikipedia.org/?curid=' + hit.pageid });
   }
   return results;
 }
@@ -157,18 +181,17 @@ app.post('/api/chat', async (req, res) => {
 
   const latestQuestion = messages[messages.length - 1].content;
   if (needsLiveSearch(latestQuestion)) {
-    try {
-      const results = await searchWeb(latestQuestion);
-      if (results.length) {
-        const research = results.map((item, index) => '[' + (index + 1) + '] ' + item.title + '\n' + item.snippet + '\nSource: ' + item.url).join('\n\n');
-        messages[messages.length - 1].content += '\n\nLIVE WEB SEARCH RESULTS (retrieved now; use these to answer, distinguish confirmed facts from uncertainty, and cite the source URLs as Markdown links):\n' + research;
-      } else {
-        messages[messages.length - 1].content += '\n\nLIVE SEARCH NOTE: No current search results were available. Do not guess about changing or current facts; clearly say you could not verify them.';
-      }
-    } catch (error) {
-      console.error('KarkiAI live search failed:', error.message);
-      messages[messages.length - 1].content += '\n\nLIVE SEARCH NOTE: The live search service failed. Do not guess about changing or current facts; clearly say you could not verify them.';
-
+    const searchQuery = latestQuestion + ' current 2026 Nepal 2083 BS when relevant';
+    const settled = await Promise.allSettled([searchWeb(searchQuery), searchWikipedia(latestQuestion)]);
+    const webResults = settled[0].status === 'fulfilled' ? settled[0].value : [];
+    const wikiResults = settled[1].status === 'fulfilled' ? settled[1].value : [];
+    const results = [...webResults, ...wikiResults].slice(0, 7);
+    if (results.length) {
+      const research = results.map((item, index) => '[' + (index + 1) + '] ' + item.title + '\n' + item.snippet + '\nSource: ' + item.url).join('\n\n');
+      messages[messages.length - 1].content += '\n\nLIVE WEB + WIKIPEDIA RESULTS (retrieved for this question; use these as primary evidence, prefer official sources over Wikipedia for current office holders and changing facts, distinguish confirmed facts from uncertainty, and cite source URLs as Markdown links):\n' + research;
+    } else {
+      console.error('KarkiAI live research unavailable:', settled.map(x => x.status === 'rejected' ? x.reason?.message : '').filter(Boolean).join('; '));
+      messages[messages.length - 1].content += '\n\nLIVE RESEARCH NOTE: Neither web search nor Wikipedia returned usable results. Do not guess about current facts; clearly say you could not verify them.';
     }
   }
 
