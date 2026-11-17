@@ -418,13 +418,23 @@ async function ask(msgs,signal,status){
   const hist=msgs.slice(-CONFIG.ctx);
   const body=[{role:"system",content:CONFIG.system},...hist.map(m=>({role:m.r==="user"?"user":"assistant",content:m.t}))];
   const key=(S.key||"").trim();
-  const timedFetch=async(url,opt={})=>{
+  const timedFetch=async(url,opt={},timeoutMs=60000)=>{
     const controller=new AbortController(),stop=()=>controller.abort();
     signal.addEventListener("abort",stop,{once:true});
-    const timer=setTimeout(()=>controller.abort(),16000);
+    const timer=setTimeout(()=>controller.abort(),timeoutMs);
     try{const r=await fetch(url,{...opt,signal:controller.signal});if(r.status===429)throw new Error("busy (rate limit)");if(!r.ok)throw new Error("HTTP "+r.status);return r}
     finally{clearTimeout(timer);signal.removeEventListener("abort",stop)}
   };
+  status("Connecting to Karki AI…");
+  try{
+    const r=await timedFetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:hist.map(m=>({role:m.r==="user"?"user":"assistant",content:m.t}))})},65000);
+    const j=await r.json();
+    if(!j.answer)throw new Error(j.error||"Karki AI server returned an empty answer");
+    return j.answer.trim();
+  }catch(e){
+    if(signal.aborted)throw e;
+    status("Trying backup AI service…");
+  }
   const jobs=[];
   if(key.startsWith("AIza"))jobs.push((async()=>{
     const r=await timedFetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({systemInstruction:{parts:[{text:CONFIG.system}]},contents:hist.map(h=>({role:h.r==="user"?"user":"model",parts:[{text:h.t}]}))})});
