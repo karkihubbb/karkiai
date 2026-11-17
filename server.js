@@ -71,7 +71,7 @@ async function searchUsPresident() {
   const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; KarkiAI/1.0)', 'Accept': 'text/html' }, signal: AbortSignal.timeout(5000) });
   if (!response.ok) throw new Error('USA.gov returned ' + response.status);
   const html = await response.text();
-  const plain = decodeHtml(html.replace(/<script[\\s\\S]*?<\\/script>|<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' '));
+  const plain = decodeHtml(html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
   const match = plain.match(/The 47th and current president of the United States is ([A-Z][A-Za-z .'-]+)/i);
   if (!match) throw new Error('Current US president not found on USA.gov');
   return [{ title: 'USA.gov — Current President of the United States', snippet: match[0], url }];
@@ -203,8 +203,8 @@ app.post('/api/chat', async (req, res) => {
 
   const latestQuestion = messages[messages.length - 1].content;
   if (needsLiveSearch(latestQuestion)) {
-    const isNepalOfficeQuestion = /\\b(nepal|nepali)\\b/i.test(latestQuestion) && /\\b(prime minister|pm|head of government)\\b/i.test(latestQuestion);
-    const isUsPresidentQuestion = /\\b(united states|usa|u\\.s\\.|america)\\b/i.test(latestQuestion) && /\\b(president|head of state)\\b/i.test(latestQuestion);
+    const isNepalOfficeQuestion = /\b(nepal|nepali)\b/i.test(latestQuestion) && /\b(prime minister|pm|head of government)\b/i.test(latestQuestion);
+    const isUsPresidentQuestion = /\b(united states|usa|u\.s\.|america)\b/i.test(latestQuestion) && /\b(president|head of state)\b/i.test(latestQuestion);
     const searchQuery = latestQuestion + ' current 2026 Nepal 2083 BS when relevant';
     const tasks = [searchWeb(searchQuery), searchWikipedia(latestQuestion)];
     if (isNepalOfficeQuestion) tasks.push(searchNepalGovernment());
