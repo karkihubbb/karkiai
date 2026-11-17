@@ -203,9 +203,9 @@ app.post('/api/chat', async (req, res) => {
   }
 
   const latestQuestion = messages[messages.length - 1].content;
-  const asksCurrentUsPresident = /\\b(president|head of state)\\b/i.test(latestQuestion)
-    && /\\b(usa|u\\.?s\\.?a?\\.?|united states|america|american)\\b/i.test(latestQuestion)
-    && !/\\b(former|past|previous|historical|in 19\\d\\d|in 20\\d\\d)\\b/i.test(latestQuestion);
+  const asksCurrentUsPresident = /\b(president|head of state)\b/i.test(latestQuestion)
+    && /\b(usa|u\.?s\.?a?\.?|united states|america|american)\b/i.test(latestQuestion)
+    && !/\b(former|past|previous|historical|in 19\d\d|in 20\d\d)\b/i.test(latestQuestion);
   if (asksCurrentUsPresident) {
     try {
       const official = await searchUsPresident();
