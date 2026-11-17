@@ -203,6 +203,14 @@ app.post('/api/chat', async (req, res) => {
   }
 
   const latestQuestion = messages[messages.length - 1].content;
+  const asksAboutCreator = /\b(who\s+(?:is|was)\s+(?:your\s+)?(?:creator|owner|maker|developer)|who\s+(?:made|created|built|developed)\s+you|who\s+owns\s+you|your\s+(?:creator|owner|maker|developer|founder))\b/i.test(latestQuestion);
+  if (asksAboutCreator) {
+    return res.json({
+      answer: 'Im an Ai created by Sarwagya Karki',
+      model: 'Karki AI',
+      provider: 'Karki AI'
+    });
+  }
   const asksCurrentUsPresident = /\b(president|head of state)\b/i.test(latestQuestion)
     && /\b(usa|u\.?s\.?a?\.?|united states|america|american)\b/i.test(latestQuestion)
     && !/\b(former|past|previous|historical|in 19\d\d|in 20\d\d)\b/i.test(latestQuestion);
