@@ -427,6 +427,89 @@ body:before{
   :root[data-t=light] .outer{background:rgba(255,255,255,.72)!important}
 }
 
+
+/* ===== KARKI AI — clean Apple-inspired floating glass refresh ===== */
+:root[data-t=light]{
+  --bg:#f5f5f7;--panel:rgba(255,255,255,.72);--glass:rgba(255,255,255,.58);
+  --line:rgba(30,40,58,.09);--tx:#1d1d1f;--mut:#77777f;--code:#f0f0f2;
+  --a1:#4779d8;--a2:#6a8fe3;--ac:#4779d8;
+}
+:root[data-t=light] body{
+  background:
+    radial-gradient(ellipse at 50% 0%,rgba(255,255,255,.98),transparent 56%),
+    linear-gradient(145deg,#f7f8fa 0%,#eceef2 100%)!important;
+  color:#1d1d1f;
+}
+:root[data-t=light] .app{background:transparent!important}
+:root[data-t=light] .rail,
+:root[data-t=light] #side{
+  background:rgba(255,255,255,.58)!important;
+  border-color:rgba(40,50,70,.08)!important;
+  backdrop-filter:blur(28px) saturate(165%);
+  -webkit-backdrop-filter:blur(28px) saturate(165%);
+}
+:root[data-t=light] .rb,
+:root[data-t=light] .ib,
+:root[data-t=light] .pill{
+  color:#555d6b!important;
+}
+:root[data-t=light] .rb:hover,
+:root[data-t=light] .ib:hover,
+:root[data-t=light] .pill:hover{
+  background:rgba(255,255,255,.88)!important;
+}
+:root[data-t=light] main{background:transparent!important}
+:root[data-t=light] .hero h2{
+  color:#1d1d1f!important;font-family:Manrope,Inter,sans-serif;
+  font-weight:650;letter-spacing:-.055em;
+}
+:root[data-t=light] .hero p{color:#77777f!important}
+:root[data-t=light] .hero .big{
+  filter:drop-shadow(0 18px 35px rgba(60,80,120,.14));
+}
+:root[data-t=light] .bar{
+  background:linear-gradient(180deg,transparent,rgba(245,245,247,.76) 35%,rgba(245,245,247,.94))!important;
+  padding:22px 24px max(22px,env(safe-area-inset-bottom))!important;
+}
+:root[data-t=light] .outer{
+  background:rgba(255,255,255,.68)!important;
+  border:1px solid rgba(255,255,255,.95)!important;
+  box-shadow:0 12px 42px rgba(35,45,65,.10),inset 0 1px 0 rgba(255,255,255,.95)!important;
+  border-radius:25px!important;
+  backdrop-filter:blur(32px) saturate(180%)!important;
+  -webkit-backdrop-filter:blur(32px) saturate(180%)!important;
+}
+:root[data-t=light] .box{background:transparent!important}
+:root[data-t=light] #in{
+  color:#202126!important;font-size:16px!important;
+}
+:root[data-t=light] #in::placeholder{color:#9297a1!important}
+:root[data-t=light] .send{
+  background:#202127!important;color:#fff!important;border-radius:50%!important;
+}
+:root[data-t=light] .cd{
+  background:rgba(255,255,255,.58)!important;
+  border:1px solid rgba(255,255,255,.9)!important;
+  box-shadow:0 8px 28px rgba(40,50,70,.045)!important;
+  backdrop-filter:blur(18px);
+}
+:root[data-t=light] .cd:hover{background:rgba(255,255,255,.9)!important;transform:translateY(-2px)}
+:root[data-t=light] .bub{
+  background:rgba(255,255,255,.72)!important;
+  border:1px solid rgba(35,45,65,.07)!important;
+  color:#25262b!important;border-radius:20px!important;
+}
+:root[data-t=light] .m.u .bub{
+  background:#e9edf5!important;border-color:#e1e6ef!important;color:#252a34!important;
+}
+:root[data-t=light] .brand{color:#333944!important}
+:root[data-t=light] .orb{box-shadow:0 8px 26px rgba(55,85,145,.18)}
+@media(max-width:700px){
+  :root[data-t=light] .bar{padding:12px 12px max(14px,env(safe-area-inset-bottom))!important}
+  :root[data-t=light] .outer{border-radius:22px!important}
+  :root[data-t=light] .hero h2{font-size:clamp(27px,8vw,40px)!important}
+}
+
 </style>
 </head>
 <body>
@@ -496,7 +579,7 @@ const $=s=>document.querySelector(s);
 const ld=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
 const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 let chats=ld("nova_chats",[]),cur=null,busy=false,ctl=null;
-let S=Object.assign({theme:"dark",accent:"ocean",lang:"en-US",rate:1,pitch:1,auto:false},ld("nova_set",{}));
+let S=Object.assign({theme:"light",accent:"ocean",lang:"en-US",rate:1,pitch:1,auto:false},ld("nova_set",{}));
 const save=()=>{sv("nova_chats",chats);sv("nova_set",S)};
 const chat=()=>chats.find(c=>c.id===cur);
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
