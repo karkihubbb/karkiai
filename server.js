@@ -27,7 +27,7 @@ const SYSTEM_PROMPT = 'You are Karki AI, a helpful, capable, friendly general-pu
 
 // Lightweight live web search for questions about current events and changing facts.
 function needsLiveSearch(question) {
-  return /\b(current|currently|latest|recent|today|tonight|this week|this month|right now|breaking|news|2026|2025|who is the (president|prime minister)|what happened|score|price|weather|election|update)\b/i.test(question);
+  return /\b(current|currently|latest|recent|today|tonight|this week|this month|right now|breaking|news|2026|2025|who|what|where|when|which|capital|president|prime minister|population|score|price|weather|election|update|tell me about|explain)\b/i.test(question);
 }
 function decodeHtml(value) {
   return value.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
@@ -160,11 +160,15 @@ app.post('/api/chat', async (req, res) => {
     try {
       const results = await searchWeb(latestQuestion);
       if (results.length) {
-        const research = results.map((item, index) => '[' + (index + 1) + '] ' + item.title + '\\n' + item.snippet + '\\nSource: ' + item.url).join('\\n\\n');
-        messages[messages.length - 1].content += '\\n\\nLIVE WEB SEARCH RESULTS (retrieved now; use these to answer, distinguish confirmed facts from uncertainty, and cite the source URLs as Markdown links):\\n' + research;
+        const research = results.map((item, index) => '[' + (index + 1) + '] ' + item.title + '\n' + item.snippet + '\nSource: ' + item.url).join('\n\n');
+        messages[messages.length - 1].content += '\n\nLIVE WEB SEARCH RESULTS (retrieved now; use these to answer, distinguish confirmed facts from uncertainty, and cite the source URLs as Markdown links):\n' + research;
+      } else {
+        messages[messages.length - 1].content += '\n\nLIVE SEARCH NOTE: No current search results were available. Do not guess about changing or current facts; clearly say you could not verify them.';
       }
     } catch (error) {
       console.error('KarkiAI live search failed:', error.message);
+      messages[messages.length - 1].content += '\n\nLIVE SEARCH NOTE: The live search service failed. Do not guess about changing or current facts; clearly say you could not verify them.';
+
     }
   }
 
