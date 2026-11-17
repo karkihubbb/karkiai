@@ -27,7 +27,7 @@ const SYSTEM_PROMPT = 'You are Karki AI, a helpful, capable, friendly general-pu
 
 // Lightweight live web search for questions about current events and changing facts.
 function needsLiveSearch(question) {
-  return /\\b(current|currently|latest|recent|today|tonight|this week|this month|right now|breaking|news|2026|2025|who is the (president|prime minister)|what happened|score|price|weather|election|update)\\b/i.test(question);
+  return /\b(current|currently|latest|recent|today|tonight|this week|this month|right now|breaking|news|2026|2025|who is the (president|prime minister)|what happened|score|price|weather|election|update)\b/i.test(question);
 }
 function decodeHtml(value) {
   return value.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
@@ -38,15 +38,15 @@ async function searchWeb(query) {
   if (!response.ok) throw new Error('Search service returned ' + response.status);
   const html = await response.text();
   const results = [];
-  const pattern = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\\s\\S]*?)<\\/a>[\\s\\S]*?<a[^>]*class="result__snippet"[^>]*>([\\s\\S]*?)<\\/a>/gi;
+  const pattern = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\\S]*?)<\/a>[\s\\S]*?<a[^>]*class="result__snippet"[^>]*>([\s\\S]*?)<\/a>/gi;
   let match;
   while ((match = pattern.exec(html)) && results.length < 5) {
     const rawUrl = decodeHtml(match[1]);
     let link = rawUrl;
     try { const parsed = new URL(rawUrl, 'https://duckduckgo.com'); link = parsed.searchParams.get('uddg') || rawUrl; } catch {}
     const title = decodeHtml(match[2].replace(/<[^>]+>/g, '').trim());
-    const snippet = decodeHtml(match[3].replace(/<[^>]+>/g, '').replace(/\\s+/g, ' ').trim());
-    if (title && /^https?:\\/\\//i.test(link)) results.push({ title, snippet, url: link });
+    const snippet = decodeHtml(match[3].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
+    if (title && /^https?:\/\//i.test(link)) results.push({ title, snippet, url: link });
   }
   return results;
 }
