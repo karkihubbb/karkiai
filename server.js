@@ -55,6 +55,17 @@ async function searchWeb(query) {
   }
   return results;
 }
+async function searchNepalGovernment() {
+  const url = 'https://opmcm.gov.np/minister-detail/';
+  const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; KarkiAI/1.0)', 'Accept': 'text/html' }, signal: AbortSignal.timeout(5000) });
+  if (!response.ok) throw new Error('Nepal PM Office returned ' + response.status);
+  const html = await response.text();
+  const plain = decodeHtml(html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
+  const match = plain.match(/(?:Balendra Shah|बालेन्द्र शाह)[\s\S]{0,1000}/i);
+  if (!match) throw new Error('Current PM name not found on official PM Office page');
+  return [{ title: 'Office of the Prime Minister and Council of Ministers, Nepal', snippet: match[0].slice(0, 900), url }];
+}
+
 async function searchWikipedia(query) {
   const lang = /[\u0900-\u097f]/.test(query) ? 'ne' : 'en';
   const base = 'https://' + lang + '.wikipedia.org/w/api.php';
@@ -181,14 +192,18 @@ app.post('/api/chat', async (req, res) => {
 
   const latestQuestion = messages[messages.length - 1].content;
   if (needsLiveSearch(latestQuestion)) {
+    const isNepalOfficeQuestion = /\b(nepal|nepali)\b/i.test(latestQuestion) && /\b(prime minister|pm|head of government)\b/i.test(latestQuestion);
     const searchQuery = latestQuestion + ' current 2026 Nepal 2083 BS when relevant';
-    const settled = await Promise.allSettled([searchWeb(searchQuery), searchWikipedia(latestQuestion)]);
+    const tasks = [searchWeb(searchQuery), searchWikipedia(latestQuestion)];
+    if (isNepalOfficeQuestion) tasks.push(searchNepalGovernment());
+    const settled = await Promise.allSettled(tasks);
     const webResults = settled[0].status === 'fulfilled' ? settled[0].value : [];
     const wikiResults = settled[1].status === 'fulfilled' ? settled[1].value : [];
-    const results = [...webResults, ...wikiResults].slice(0, 7);
+    const officialResults = settled[2]?.status === 'fulfilled' ? settled[2].value : [];
+    const results = [...officialResults, ...webResults, ...wikiResults].slice(0, 8);
     if (results.length) {
       const research = results.map((item, index) => '[' + (index + 1) + '] ' + item.title + '\n' + item.snippet + '\nSource: ' + item.url).join('\n\n');
-      messages[messages.length - 1].content += '\n\nLIVE WEB + WIKIPEDIA RESULTS (retrieved for this question; use these as primary evidence, prefer official sources over Wikipedia for current office holders and changing facts, distinguish confirmed facts from uncertainty, and cite source URLs as Markdown links):\n' + research;
+      messages[messages.length - 1].content += '\n\nLIVE WEB, OFFICIAL GOVERNMENT + WIKIPEDIA RESULTS (retrieved for this question; use these as primary evidence, prefer official government sources over Wikipedia for current office holders and changing facts, never answer from old training knowledge when current results contradict it, distinguish confirmed facts from uncertainty, and cite source URLs as Markdown links):\n' + research;
     } else {
       console.error('KarkiAI live research unavailable:', settled.map(x => x.status === 'rejected' ? x.reason?.message : '').filter(Boolean).join('; '));
       messages[messages.length - 1].content += '\n\nLIVE RESEARCH NOTE: Neither web search nor Wikipedia returned usable results. Do not guess about current facts; clearly say you could not verify them.';
