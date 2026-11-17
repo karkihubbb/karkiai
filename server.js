@@ -22,7 +22,34 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-const SYSTEM_PROMPT = 'You are KarkiAI, a helpful, capable, friendly general-purpose AI assistant. Answer clearly and professionally. Be accurate, explain uncertainty honestly, and use readable Markdown when helpful. Never claim to browse the web or perform actions unless the app provides that capability.';
+const SYSTEM_PROMPT = 'You are Karki AI, a helpful, capable, friendly general-purpose AI assistant. Answer naturally and clearly, with useful detail and readable Markdown. For current or time-sensitive facts, use the supplied live web search results as the primary evidence, state the date when relevant, and include clickable source links. Never invent current facts or claim to have searched if no results were supplied.';
+
+
+// Lightweight live web search for questions about current events and changing facts.
+function needsLiveSearch(question) {
+  return /\\b(current|currently|latest|recent|today|tonight|this week|this month|right now|breaking|news|2026|2025|who is the (president|prime minister)|what happened|score|price|weather|election|update)\\b/i.test(question);
+}
+function decodeHtml(value) {
+  return value.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+}
+async function searchWeb(query) {
+  const url = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query);
+  const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; KarkiAI/1.0)', 'Accept': 'text/html' }, signal: AbortSignal.timeout(9000) });
+  if (!response.ok) throw new Error('Search service returned ' + response.status);
+  const html = await response.text();
+  const results = [];
+  const pattern = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\\s\\S]*?)<\\/a>[\\s\\S]*?<a[^>]*class="result__snippet"[^>]*>([\\s\\S]*?)<\\/a>/gi;
+  let match;
+  while ((match = pattern.exec(html)) && results.length < 5) {
+    const rawUrl = decodeHtml(match[1]);
+    let link = rawUrl;
+    try { const parsed = new URL(rawUrl, 'https://duckduckgo.com'); link = parsed.searchParams.get('uddg') || rawUrl; } catch {}
+    const title = decodeHtml(match[2].replace(/<[^>]+>/g, '').trim());
+    const snippet = decodeHtml(match[3].replace(/<[^>]+>/g, '').replace(/\\s+/g, ' ').trim());
+    if (title && /^https?:\\/\\//i.test(link)) results.push({ title, snippet, url: link });
+  }
+  return results;
+}
 
 async function askGroq(messages) {
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -126,6 +153,19 @@ app.post('/api/chat', async (req, res) => {
 
   if (!messages.length || messages[messages.length - 1].role !== 'user') {
     return res.status(400).json({ error: 'The latest message must be from you.' });
+  }
+
+  const latestQuestion = messages[messages.length - 1].content;
+  if (needsLiveSearch(latestQuestion)) {
+    try {
+      const results = await searchWeb(latestQuestion);
+      if (results.length) {
+        const research = results.map((item, index) => '[' + (index + 1) + '] ' + item.title + '\\n' + item.snippet + '\\nSource: ' + item.url).join('\\n\\n');
+        messages[messages.length - 1].content += '\\n\\nLIVE WEB SEARCH RESULTS (retrieved now; use these to answer, distinguish confirmed facts from uncertainty, and cite the source URLs as Markdown links):\\n' + research;
+      }
+    } catch (error) {
+      console.error('KarkiAI live search failed:', error.message);
+    }
   }
 
   const providers = [];
