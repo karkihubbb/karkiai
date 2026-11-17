@@ -118,6 +118,29 @@ main.empty #cards{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;mar
 .row{gap:8px}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Karki AI visual refresh */
+:root{--bg:#070b16;--panel:#0b1222;--glass:rgba(120,160,255,.075);--line:rgba(155,185,255,.16);--tx:#f4f7ff;--mut:#9aa9c5;--a1:#38bdf8;--a2:#6366f1;--ac:#38bdf8;--p1:#163b67;--p2:#101b38;--code:#080f20;--pg:radial-gradient(90% 45% at 50% 110%,#153d72 0%,#101b38 42%,transparent 78%)}
+:root[data-c=aurora]{--a1:#a78bfa;--a2:#ec4899;--ac:#a78bfa}
+:root[data-c=sunset]{--a1:#fb923c;--a2:#f43f5e;--ac:#fb923c}
+:root[data-c=emerald]{--a1:#34d399;--a2:#06b6d4;--ac:#34d399}
+:root[data-c=midnight]{--a1:#818cf8;--a2:#22d3ee;--ac:#818cf8}
+:root[data-t=light]{--bg:#f3f6fc;--panel:#fff;--glass:rgba(45,85,150,.065);--line:rgba(45,75,130,.14);--tx:#14213b;--mut:#64748b;--code:#edf2fa;--p1:#dceafe;--p2:#edf3ff;--pg:radial-gradient(90% 45% at 50% 110%,#c9dcff 0%,#edf3ff 48%,transparent 80%)}
+body{background-color:var(--bg);letter-spacing:.005em}
+.rail{background:linear-gradient(180deg,rgba(10,18,38,.96),rgba(8,13,28,.82));border-right:1px solid var(--line)}
+:root[data-t=light] .rail{background:rgba(255,255,255,.88)}
+.rb{background:var(--glass);border-color:var(--line)}
+.rb.on,.btn.p,.m.a .av{background:linear-gradient(135deg,var(--a1),var(--a2))}
+.big{box-shadow:0 0 0 6px color-mix(in srgb,var(--panel) 90%,transparent),0 0 75px color-mix(in srgb,var(--a1) 30%,transparent)}
+.m.a .bub{background:color-mix(in srgb,var(--panel) 78%,transparent);border-color:var(--line);box-shadow:0 8px 28px rgba(0,0,0,.08)}
+.outer{background:color-mix(in srgb,var(--p2) 88%,transparent);border-color:color-mix(in srgb,var(--a1) 35%,var(--line));box-shadow:0 18px 60px rgba(0,0,0,.18)}
+.box{background:color-mix(in srgb,var(--panel) 92%,transparent)}
+.ib.send{background:linear-gradient(135deg,var(--a1),var(--a2));border:0;box-shadow:0 5px 18px color-mix(in srgb,var(--a1) 25%,transparent)}
+.cd{background:color-mix(in srgb,var(--p1) 30%,transparent);border-color:var(--line)}
+.btn,.pill,.ib{transition:background .18s,border-color .18s,transform .18s}
+.btn:hover,.pill:hover,.ib:hover{transform:translateY(-1px)}
+@media(max-width:820px){.rail{background:var(--panel);border-bottom:1px solid var(--line)}.box{background:var(--panel);box-shadow:0 12px 35px rgba(0,0,0,.14)}}
+
 </style>
 </head>
 <body>
@@ -299,38 +322,38 @@ async function tf(url,opt,signal){const ab=new Promise((_,j)=>signal.addEventLis
 async function ask(msgs,signal,status){
   const hist=msgs.slice(-CONFIG.ctx);
   const body=[{role:"system",content:CONFIG.system},...hist.map(m=>({role:m.r==="user"?"user":"assistant",content:m.t}))];
-  const convo=hist.map(m=>(m.r==="user"?"User: ":"Assistant: ")+m.t).join("\n").slice(-700)+"\nAssistant:";
-  const sys="system="+encodeURIComponent(CONFIG.system);
-  const post=(url,model,hdr)=>async()=>{const r=await tf(url,{method:"POST",headers:Object.assign({"Content-Type":"application/json"},hdr||{}),body:JSON.stringify({model,messages:body})},signal);const j=await r.json();return j.choices?.[0]?.message?.content};
-  const get=m=>async()=>(await tf(CONFIG.get+encodeURIComponent(convo)+"?"+(m?"model="+m+"&":"")+sys,{},signal)).text();
-  const key=(S.key||"").trim(),tries=[];
-  if(key.startsWith("AIza"))for(const m of["gemini-flash-latest","gemini-2.5-flash"])tries.push(["Gemini",async()=>{const r=await tf("https://generativelanguage.googleapis.com/v1beta/models/"+m+":generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({systemInstruction:{parts:[{text:CONFIG.system}]},contents:hist.map(h=>({role:h.r==="user"?"user":"model",parts:[{text:h.t}]}))})},signal);const j=await r.json();return j.candidates?.[0]?.content?.parts?.map(p=>p.text).join("")}]);
-  else if(key.startsWith("gsk_"))tries.push(["Groq",post("https://api.groq.com/openai/v1/chat/completions","llama-3.3-70b-versatile",{Authorization:"Bearer "+key})]);
-  tries.push(["Pollinations",post(CONFIG.post,CONFIG.model)],["Pollinations GET",get(CONFIG.model)],["Pollinations mistral",post(CONFIG.post,"mistral")],["Pollinations default",get("")],["LLM7",post("https://api.llm7.io/v1/chat/completions","default",{Authorization:"Bearer unused"})]);
-  const errs=[];
-  for(let round=0;round<2;round++){
-    for(const[n,t]of tries){try{const x=await t();if(x&&x.trim())return x}catch(e){if(signal.aborted)throw e;errs.push(n+": "+(e.message||"failed"))}}
-    if(round===0){status("Trying again…");await sleep(errs.some(x=>/busy/.test(x))?9000:1500)}
-  }
-  throw new Error([...new Set(errs)].slice(0,5).join("; ")||"empty reply");
+  const key=(S.key||"").trim();
+  const timedFetch=async(url,opt={})=>{
+    const controller=new AbortController(),stop=()=>controller.abort();
+    signal.addEventListener("abort",stop,{once:true});
+    const timer=setTimeout(()=>controller.abort(),16000);
+    try{const r=await fetch(url,{...opt,signal:controller.signal});if(r.status===429)throw new Error("busy (rate limit)");if(!r.ok)throw new Error("HTTP "+r.status);return r}
+    finally{clearTimeout(timer);signal.removeEventListener("abort",stop)}
+  };
+  const jobs=[];
+  if(key.startsWith("AIza"))jobs.push((async()=>{
+    const r=await timedFetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({systemInstruction:{parts:[{text:CONFIG.system}]},contents:hist.map(h=>({role:h.r==="user"?"user":"model",parts:[{text:h.t}]}))})});
+    const j=await r.json();return j.candidates?.[0]?.content?.parts?.map(p=>p.text).join("");
+  })());
+  else if(key.startsWith("gsk_"))jobs.push((async()=>{
+    const r=await timedFetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+key},body:JSON.stringify({model:"llama-3.3-70b-versatile",messages:body})});
+    const j=await r.json();return j.choices?.[0]?.message?.content;
+  })());
+  jobs.push((async()=>{const r=await timedFetch(CONFIG.post,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:CONFIG.model,messages:body})});const j=await r.json();return j.choices?.[0]?.message?.content})());
+  jobs.push((async()=>{const convo=hist.map(m=>(m.r==="user"?"User: ":"Assistant: ")+m.t).join("\n").slice(-700)+"\nAssistant:";const url=CONFIG.get+encodeURIComponent(convo)+"?model="+encodeURIComponent(CONFIG.model)+"&system="+encodeURIComponent(CONFIG.system);return(await timedFetch(url)).text()})());
+  status("Connecting…");
+  return await Promise.any(jobs.map(async job=>{const value=await job;if(!value||!value.trim())throw new Error("Empty reply");return value.trim()}));
 }
 async function reply(){
   const c=chat(),box=$("#msgs");busy=true;setBusy(true);
   const ph=document.createElement("div");ph.className="m a";ph.innerHTML='<div class="av">K</div><div class="bub"><div class="dots"><i></i><i></i><i></i></div></div>';
   box.append(ph);bottom(true);document.querySelector(".brand .orb").classList.add("think");
-  ctl=new AbortController();let txt,src=null;
-  const last=c.msgs[c.msgs.length-1].t,ms=c.msgs.slice();
-  try{const w=await wiki(last);if(w){src=w;ms[ms.length-1]={r:"user",t:"Reference from Wikipedia (use it if it helps, ignore it if it does not):\n"+w.text+"\n\nQuestion: "+last}}}catch{}
-  try{txt=await ask(ms,ctl.signal,t=>{ph.querySelector(".bub").innerHTML=`<div class="dots"><i></i><i></i><i></i></div><small style="color:var(--mut)">${t}</small>`});if(src)txt+="\n\n*Source: [Wikipedia]("+src.url+")*"}
+  ctl=new AbortController();
+  let txt;
+  try{txt=await ask(c.msgs.slice(),ctl.signal,t=>{ph.querySelector(".bub").innerHTML='<div class="dots"><i></i><i></i><i></i></div><small style="color:var(--mut)">'+t+'</small>'})}
   catch(e){if(ctl.signal.aborted){ph.remove();return end()}
-    let w=src;
-    if(w)txt=w.text+"\n\n*The AI service did not respond, so this is a summary from [Wikipedia]("+w.url+").*";else txt=offline(c.msgs[c.msgs.length-1].t)+"\n\n*Couldn't reach the AI service ("+(navigator.onLine?(e&&e.message||"unknown error"):"your device is offline")+"). Wait 15 seconds, or add a free Gemini key in Settings (gear icon) for reliable answers.*"}
-  ph.remove();const m={r:"ai",t:txt};c.msgs.push(m);save();
-  const el=msgEl({r:"ai",t:""},0);box.append(el);
-  const md_=el.querySelector(".md"),w=txt.split(/(\s+)/);let i=0;
-  await new Promise(res=>{const tick=()=>{if(ctl.signal.aborted){i=w.length}
-    i=Math.min(w.length,i+6);md_.innerHTML=md(w.slice(0,i).join(""));bottom();
-    i<w.length?setTimeout(tick,22):res()};tick()});
+    txt=offline(c.msgs[c.msgs.length-1].t)+"\n\n*Couldn't reach the AI service ("+(navigator.onLine?(e&&e.message||"unknown error"):"your device is offline")+". Please try again, or add a free Gemini key in Settings for more reliable answers.*"}
+  ph.remove();c.msgs.push({r:"ai",t:txt});save();
   show();end();
   if(S.auto||voiceMode)speak(txt);
 }
