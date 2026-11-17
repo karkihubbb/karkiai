@@ -96,7 +96,7 @@ main.empty #cards{display:grid}
 .ov .orb.listen{animation:pulse 1.2s infinite}.ov .orb.speak{animation:pulse .6s infinite}
 #vtx{color:var(--mut);max-width:520px;min-height:48px}
 .set{align-items:stretch;justify-content:center;text-align:left}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px;max-width:420px;width:100%;margin:auto;display:flex;flex-direction:column;gap:14px}
+.card{max-height:92dvh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px;max-width:420px;width:100%;margin:auto;display:flex;flex-direction:column;gap:14px}
 .card label{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--mut);font-size:14px}
 .card select,.card input[type=range]{background:var(--glass);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:8px;max-width:190px}
 .sw{display:flex;gap:9px}.sw button{width:30px;height:30px;border-radius:50%;border:2px solid transparent;box-shadow:inset 0 0 0 2px var(--panel)}.sw button.on{border-color:var(--tx)}
@@ -168,6 +168,7 @@ main.empty #cards{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;mar
   <label>Speech speed<input type="range" id="rate" min=".6" max="1.6" step=".1"></label>
   <label>Pitch<input type="range" id="pitch" min=".6" max="1.6" step=".1"></label>
   <label>Auto-speak replies<input type="checkbox" id="auto"></label>
+  <label style="flex-direction:column;align-items:stretch;gap:6px">Free AI key (optional, most reliable)<input id="key" type="password" placeholder="Paste Gemini or Groq key" autocomplete="off" style="background:var(--glass);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:16px;max-width:none"><small>Get one free at aistudio.google.com/apikey. It stays only on this device, never in the site code.</small></label>
   <button class="btn" id="theme2">Switch light / dark theme</button>
   <button class="btn" id="exp">Export this chat (.txt)</button>
   <button class="btn" id="clr" style="color:#f87171">Delete all data</button>
@@ -177,7 +178,7 @@ main.empty #cards{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;mar
 <script>
 /* ============ CONFIG ============ */
 const CONFIG={
-  post:"https://text.pollinations.ai/openai", model:"openai",
+  post:"https://text.pollinations.ai/openai", model:"openai-fast",
   get:"https://text.pollinations.ai/",
   system:"You are Karki AI, a helpful, concise, friendly AI assistant. You fully understand Nepali, both Devanagari script and romanized Nepali (for example 'k cha', 'malai help chahiyo', 'timro naam k ho'). When the user writes Nepali or romanized Nepali, reply in natural, correct Nepali in Devanagari script. Otherwise reply in the user's language. Always try to give a helpful answer to every question, and do not refuse unless it is unsafe or illegal. Be accurate: if you are not sure of a fact, say so instead of guessing, and never invent facts, names or numbers. Use Markdown when it helps.",
   ctx:10
@@ -299,18 +300,19 @@ async function ask(msgs,signal,status){
   const hist=msgs.slice(-CONFIG.ctx);
   const body=[{role:"system",content:CONFIG.system},...hist.map(m=>({role:m.r==="user"?"user":"assistant",content:m.t}))];
   const convo=hist.map(m=>(m.r==="user"?"User: ":"Assistant: ")+m.t).join("\n").slice(-700)+"\nAssistant:";
-  const sys="&system="+encodeURIComponent(CONFIG.system);
-  const tries=[
-    async()=>{const r=await tf(CONFIG.post,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:CONFIG.model,messages:body})},signal);const j=await r.json();return j.choices?.[0]?.message?.content},
-    async()=>(await tf(CONFIG.get+encodeURIComponent(convo)+"?model="+CONFIG.model+sys,{},signal)).text(),
-    async()=>(await tf(CONFIG.get+encodeURIComponent(convo)+"?model=mistral"+sys,{},signal)).text()
-  ];
-  let err;
+  const sys="system="+encodeURIComponent(CONFIG.system);
+  const post=(url,model,hdr)=>async()=>{const r=await tf(url,{method:"POST",headers:Object.assign({"Content-Type":"application/json"},hdr||{}),body:JSON.stringify({model,messages:body})},signal);const j=await r.json();return j.choices?.[0]?.message?.content};
+  const get=m=>async()=>(await tf(CONFIG.get+encodeURIComponent(convo)+"?"+(m?"model="+m+"&":"")+sys,{},signal)).text();
+  const key=(S.key||"").trim(),tries=[];
+  if(key.startsWith("AIza"))for(const m of["gemini-flash-latest","gemini-2.5-flash"])tries.push(["Gemini",async()=>{const r=await tf("https://generativelanguage.googleapis.com/v1beta/models/"+m+":generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({systemInstruction:{parts:[{text:CONFIG.system}]},contents:hist.map(h=>({role:h.r==="user"?"user":"model",parts:[{text:h.t}]}))})},signal);const j=await r.json();return j.candidates?.[0]?.content?.parts?.map(p=>p.text).join("")}]);
+  else if(key.startsWith("gsk_"))tries.push(["Groq",post("https://api.groq.com/openai/v1/chat/completions","llama-3.3-70b-versatile",{Authorization:"Bearer "+key})]);
+  tries.push(["Pollinations",post(CONFIG.post,CONFIG.model)],["Pollinations GET",get(CONFIG.model)],["Pollinations mistral",post(CONFIG.post,"mistral")],["Pollinations default",get("")],["LLM7",post("https://api.llm7.io/v1/chat/completions","default",{Authorization:"Bearer unused"})]);
+  const errs=[];
   for(let round=0;round<2;round++){
-    for(const t of tries){try{const x=await t();if(x&&x.trim())return x}catch(e){if(signal.aborted)throw e;err=e}}
-    if(round===0){status("The free service is busy. Retrying…");await sleep(/busy/.test(err?.message)?9000:1500)}
+    for(const[n,t]of tries){try{const x=await t();if(x&&x.trim())return x}catch(e){if(signal.aborted)throw e;errs.push(n+": "+(e.message||"failed"))}}
+    if(round===0){status("Trying again…");await sleep(errs.some(x=>/busy/.test(x))?9000:1500)}
   }
-  throw err||new Error("empty reply");
+  throw new Error([...new Set(errs)].slice(0,5).join("; ")||"empty reply");
 }
 async function reply(){
   const c=chat(),box=$("#msgs");busy=true;setBusy(true);
@@ -321,8 +323,8 @@ async function reply(){
   try{const w=await wiki(last);if(w){src=w;ms[ms.length-1]={r:"user",t:"Reference from Wikipedia (use it if it helps, ignore it if it does not):\n"+w.text+"\n\nQuestion: "+last}}}catch{}
   try{txt=await ask(ms,ctl.signal,t=>{ph.querySelector(".bub").innerHTML=`<div class="dots"><i></i><i></i><i></i></div><small style="color:var(--mut)">${t}</small>`});if(src)txt+="\n\n*Source: [Wikipedia]("+src.url+")*"}
   catch(e){if(ctl.signal.aborted){ph.remove();return end()}
-    let w=src;if(!w){try{w=await wiki(last,true)}catch{}}
-    if(w)txt=w.text+"\n\n*The AI service did not respond, so this is a summary from [Wikipedia]("+w.url+").*";else txt=offline(c.msgs[c.msgs.length-1].t)+"\n\n*Couldn't reach the AI service ("+(navigator.onLine?(e&&e.message||"unknown error"):"your device is offline")+"). Wait 15 seconds and try again.*"}
+    let w=src;
+    if(w)txt=w.text+"\n\n*The AI service did not respond, so this is a summary from [Wikipedia]("+w.url+").*";else txt=offline(c.msgs[c.msgs.length-1].t)+"\n\n*Couldn't reach the AI service ("+(navigator.onLine?(e&&e.message||"unknown error"):"your device is offline")+"). Wait 15 seconds, or add a free Gemini key in Settings (gear icon) for reliable answers.*"}
   ph.remove();const m={r:"ai",t:txt};c.msgs.push(m);save();
   const el=msgEl({r:"ai",t:""},0);box.append(el);
   const md_=el.querySelector(".md"),w=txt.split(/(\s+)/);let i=0;
@@ -391,8 +393,8 @@ document.querySelectorAll(".cd").forEach(b=>b.onclick=()=>{const k=b.dataset.c;
   else{inp.value=k==="i"?"Create an image of ":"Summarise this:\n";inp.oninput();inp.focus()}});
 $("main").addEventListener("click",()=>$("#side").classList.remove("open"));
 /* ============ SETTINGS ============ */
-$("#setb").onclick=()=>{$("#lang").value=S.lang;$("#rate").value=S.rate;$("#pitch").value=S.pitch;$("#auto").checked=S.auto;$("#so").classList.add("on")};
-$("#sx").onclick=()=>{S.lang=$("#lang").value;S.rate=+$("#rate").value;S.pitch=+$("#pitch").value;S.auto=$("#auto").checked;save();$("#so").classList.remove("on")};
+$("#setb").onclick=()=>{$("#lang").value=S.lang;$("#rate").value=S.rate;$("#pitch").value=S.pitch;$("#auto").checked=S.auto;$("#key").value=S.key||"";$("#so").classList.add("on")};
+$("#sx").onclick=()=>{S.lang=$("#lang").value;S.rate=+$("#rate").value;S.pitch=+$("#pitch").value;S.auto=$("#auto").checked;S.key=$("#key").value.trim();save();$("#so").classList.remove("on")};
 $("#clr").onclick=()=>{if(confirm("Delete all chats and settings?")){localStorage.removeItem("nova_chats");localStorage.removeItem("nova_set");location.reload()}};
 
 /* ============ INIT ============ */
