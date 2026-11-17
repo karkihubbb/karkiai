@@ -5,7 +5,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
@@ -27,14 +27,14 @@ const SYSTEM_PROMPT = 'You are Karki AI, a helpful, capable, friendly general-pu
 
 // Lightweight live web search for questions about current events and changing facts.
 function needsLiveSearch(question) {
-  return /\b(current|currently|latest|recent|today|tonight|this week|this month|right now|breaking|news|2026|2025|who|what|where|when|which|capital|president|prime minister|population|score|price|weather|election|update|tell me about|explain)\b/i.test(question);
+  return /\\b(current|currently|latest|recent|today|tonight|this week|this month|right now|breaking|news|2026|2025|president|prime minister|who is .* (president|prime minister)|who won|results of|score|price|weather|election|stock|exchange rate|what happened today)\\b/i.test(question);
 }
 function decodeHtml(value) {
   return value.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 }
 async function searchWeb(query) {
   const url = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query);
-  const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; KarkiAI/1.0)', 'Accept': 'text/html' }, signal: AbortSignal.timeout(9000) });
+  const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; KarkiAI/1.0)', 'Accept': 'text/html' }, signal: AbortSignal.timeout(3500) });
   if (!response.ok) throw new Error('Search service returned ' + response.status);
   const html = await response.text();
   const results = [];
@@ -172,20 +172,31 @@ app.post('/api/chat', async (req, res) => {
     }
   }
 
-  const providers = [];
+    const providers = [];
   if (process.env.GROQ_API_KEY) providers.push(['Groq', () => askGroq(messages)]);
   if (process.env.GEMINI_API_KEY) providers.push(['Gemini', () => askGemini(messages)]);
-  providers.push(['Pollinations', () => askPollinations(messages)]);
 
   const failures = [];
-  for (const [name, run] of providers) {
-    try {
-      const result = await run();
-      return res.json(result);
-    } catch (error) {
-      console.error(`KarkiAI ${name} provider failed:`, error.message);
-      failures.push(`${name}: ${error.message}`);
-    }
+  if (providers.length) {
+    const attempts = providers.map(async ([name, run]) => {
+      try { return await run(); }
+      catch (error) {
+        console.error(`KarkiAI ${name} provider failed:`, error.message);
+        failures.push(`${name}: ${error.message}`);
+        throw error;
+      }
+    });
+    try { return res.json(await Promise.any(attempts)); } catch {}
+  }
+
+  try {
+    return res.json(await Promise.race([
+      askPollinations(messages),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Free fallback timed out')), 18000))
+    ]));
+  } catch (error) {
+    console.error('KarkiAI Pollinations provider failed:', error.message);
+    failures.push(`Pollinations: ${error.message}`);
   }
 
   return res.status(503).json({
