@@ -1,0 +1,18 @@
+ONE-LINE CHANGE
+===============
+Open index.html on GitHub (pencil icon). Find this line near the top:
+
+<meta name="theme-color" content="#0b0d12">
+
+Paste this ONE line directly under it:
+
+<script src="/pwa-install.js" defer></script>
+
+Then upload these files to the SAME folder as index.html:
+  - pwa-install.js
+  - manifest.json
+  - sw.js
+  - icons/ (the whole folder: icon-192.png, icon-512.png, maskable-512.png)
+
+Commit. After your site redeploys, open it on your phone and tap Install app
+(iPhone: Share -> Add to Home Screen). For an APK use pwabuilder.com with your live URL.
