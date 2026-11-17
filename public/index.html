@@ -332,6 +332,16 @@ aside{left:64px!important;background:var(--panel)!important;border-right:1px sol
 .pill:hover{background:rgba(255,255,255,.07)!important;border-color:transparent!important}
 @media(max-width:820px){.rail{height:58px!important;padding:6px 12px!important;width:100%!important;flex-direction:row!important}.wm{width:auto!important;margin-right:auto!important;padding:0 8px 0 2px!important;font-size:15px!important}.rb{width:40px!important;height:40px!important;border-radius:12px!important}aside{left:0!important;top:calc(58px + env(safe-area-inset-top))!important}.big{width:116px!important}.outer{background:#2f2f2f!important}.box{background:transparent!important}}
 
+
+/* Live knowledge + premium voice/orb polish */
+.big{background:radial-gradient(circle at 50% 42%,#18223a 0%,#080b14 58%,#030407 100%)!important;border:1px solid rgba(130,190,255,.35)!important;box-shadow:0 0 0 1px rgba(255,255,255,.05),0 0 55px rgba(92,110,255,.22),0 0 95px rgba(32,205,220,.12)!important}
+.big:before{background:conic-gradient(from 0deg,#10182b,#5b5ce2,#19c7d4,#a855f7,#182c59,#19c7d4,#10182b)!important;filter:blur(15px)!important;opacity:.95!important;animation:spin 9s linear infinite!important}
+.big:after{background:radial-gradient(circle at 30% 22%,rgba(255,255,255,.42),transparent 27%),radial-gradient(circle at 50% 50%,rgba(8,12,25,.08),rgba(0,0,0,.78) 78%)!important}
+.core-label{position:relative;z-index:2;color:#fff!important;text-shadow:0 1px 18px rgba(80,180,255,.5)!important;font-weight:700!important}
+.rb{width:46px;height:46px;border-radius:15px!important;border:1px solid transparent!important;transition:background .18s,border-color .18s,transform .18s!important}
+.rb:hover{background:rgba(255,255,255,.09)!important;border-color:var(--line)!important;transform:translateY(-1px)}
+.rb.on{background:rgba(255,255,255,.13)!important;border-color:rgba(255,255,255,.13)!important;color:#fff!important}
+.ov .orb{background:conic-gradient(from 0deg,#252c55,#6366f1,#22d3ee,#a855f7,#252c55)!important;box-shadow:0 0 45px rgba(99,102,241,.35),0 0 85px rgba(34,211,238,.18)!important}
 </style>
 </head>
 <body>
@@ -600,8 +610,8 @@ function listen(onFinal){
   try{rec.start();return true}catch{return false}
 }
 $("#mic").onclick=()=>{if($("#mic").classList.contains("rec"))rec.stop();else listen()};
-$("#vmode").onclick=()=>{if(!SR||!("speechSynthesis" in window))return toast("Voice mode needs Chrome or Safari");voiceMode=true;$("#vo").classList.add("on");$("#vorb").className="orb";$("#vtx").textContent="Tap the orb to start"};
-$("#vorb").onclick=()=>{speechSynthesis.cancel();ctl?.abort();listen()};
+$("#vmode").onclick=()=>{if(!SR||!("speechSynthesis" in window))return toast("Voice mode needs Chrome or Safari");voiceMode=true;$("#vo").classList.add("on");$("#vorb").className="orb";$("#vtx").textContent="Listening… speak naturally";listen()};
+$("#vorb").onclick=()=>{if($("#mic").classList.contains("rec")){try{rec?.stop()}catch{};return}speechSynthesis.cancel();ctl?.abort();listen()};
 $("#vx").onclick=()=>{voiceMode=false;try{rec?.abort()}catch{}speechSynthesis.cancel();$("#vo").classList.remove("on")};
 
 /* ============ EXTRAS ============ */
