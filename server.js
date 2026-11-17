@@ -38,7 +38,7 @@ async function searchWeb(query) {
   if (!response.ok) throw new Error('Search service returned ' + response.status);
   const html = await response.text();
   const results = [];
-  const pattern = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\\S]*?)<\/a>[\s\\S]*?<a[^>]*class="result__snippet"[^>]*>([\s\\S]*?)<\/a>/gi;
+  const pattern = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;
   let match;
   while ((match = pattern.exec(html)) && results.length < 5) {
     const rawUrl = decodeHtml(match[1]);
