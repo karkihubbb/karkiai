@@ -72,9 +72,10 @@ async function searchUsPresident() {
   if (!response.ok) throw new Error('USA.gov returned ' + response.status);
   const html = await response.text();
   const plain = decodeHtml(html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
-  const match = plain.match(/The 47th and current president of the United States is ([A-Z][A-Za-z .'-]+)/i);
-  if (!match) throw new Error('Current US president not found on USA.gov');
-  return [{ title: 'USA.gov — Current President of the United States', snippet: match[0], url }];
+  if (!/47th and current president of the United States/i.test(plain) || !/Donald John Trump/i.test(plain)) {
+    throw new Error('USA.gov did not confirm the current president');
+  }
+  return [{ title: 'USA.gov — Current President of the United States', snippet: 'USA.gov identifies Donald John Trump as the 47th and current president of the United States.', url }];
 }
 
 async function searchWikipedia(query) {
@@ -202,6 +203,22 @@ app.post('/api/chat', async (req, res) => {
   }
 
   const latestQuestion = messages[messages.length - 1].content;
+  const asksCurrentUsPresident = /\\b(president|head of state)\\b/i.test(latestQuestion)
+    && /\\b(usa|u\\.?s\\.?a?\\.?|united states|america|american)\\b/i.test(latestQuestion)
+    && !/\\b(former|past|previous|historical|in 19\\d\\d|in 20\\d\\d)\\b/i.test(latestQuestion);
+  if (asksCurrentUsPresident) {
+    try {
+      const official = await searchUsPresident();
+      return res.json({
+        answer: 'The current President of the United States is **Donald J. Trump**, the 47th president. He took office on January 20, 2025.\n\nSource: [USA.gov — Presidents, vice presidents, and first ladies](' + official[0].url + ')',
+        model: 'Official live government source',
+        provider: 'USA.gov'
+      });
+    } catch (error) {
+      console.error('KarkiAI US president verification failed:', error.message);
+      return res.status(503).json({ error: 'I could not verify the current US president from USA.gov just now. Please try again shortly.' });
+    }
+  }
   if (needsLiveSearch(latestQuestion)) {
     const isNepalOfficeQuestion = /\b(nepal|nepali)\b/i.test(latestQuestion) && /\b(prime minister|pm|head of government)\b/i.test(latestQuestion);
     const isUsPresidentQuestion = /\b(united states|usa|u\.s\.|america)\b/i.test(latestQuestion) && /\b(president|head of state)\b/i.test(latestQuestion);
