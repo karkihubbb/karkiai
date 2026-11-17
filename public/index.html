@@ -580,6 +580,8 @@ const ld=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return 
 const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 let chats=ld("nova_chats",[]),cur=null,busy=false,ctl=null;
 let S=Object.assign({theme:"light",accent:"ocean",lang:"en-US",rate:1,pitch:1,auto:false},ld("nova_set",{}));
+// One-time migration: switch existing users from the old dark default to the new light design.
+if(!ld("nova_light_migrated_v1",false)){S.theme="light";sv("nova_light_migrated_v1",true);}
 const save=()=>{sv("nova_chats",chats);sv("nova_set",S)};
 const chat=()=>chats.find(c=>c.id===cur);
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
