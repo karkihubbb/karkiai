@@ -30,7 +30,10 @@ function needsLiveSearch(question) {
   if (!q || /^(hi|hello|hey|namaste|नमस्ते)[!. ]*$/i.test(q)) return false;
   if (/^[\d\s+\-*/().%^×÷]+$/.test(q)) return false;
   if (/\b(write|draft|compose|translate|rewrite|poem|story|joke|make me|create an image|generate an image|draw)\b/i.test(q)) return false;
-  return /\b(who|what|when|where|which|why|how|is|are|was|were|does|do|did|tell me|explain|define|meaning|capital|country|countries|city|cities|continent|geography|river|mountain|ocean|sea|border|currency|language|population|area|located|location|history|government|politics|parliament|constitution|law|president|prime minister|minister|election|current|currently|latest|recent|today|tonight|this week|this month|right now|breaking|news|2026|2083|nepal|nepali|bikram sambat|bs|ad|price|weather|stock|exchange rate|score|results)\b|[?؟]|(को हो|के हो|कहाँ|कहिले|कति|किन|बारे|को बारेमा|कसरी|राजधानी|देश|शहर|भूगोल)/i.test(q);
+  // Only search when freshness matters. Ordinary facts and explanations go straight to the AI.
+  return /\b(current|currently|latest|recent|today|tonight|this week|this month|right now|breaking|news|weather|stock price|share price|exchange rate|live score|traffic|open now|2026|2083|price today)\b/i.test(q)
+    || /\b(who is the (?:current|present)|what is the (?:current|latest)|as of today)\b/i.test(q)
+    || /(आजको|अहिलेको|हालको|ताजा समाचार|मौसम आज)/i.test(q);
 }
 function decodeHtml(value) {
   return value.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)));
@@ -105,7 +108,7 @@ async function askGroq(messages) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
     },
-    signal: AbortSignal.timeout(60000),
+    signal: AbortSignal.timeout(30000),
     body: JSON.stringify({
       model: GROQ_MODEL,
       messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
@@ -144,7 +147,7 @@ async function askGemini(messages) {
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
       contents,
-      generationConfig: { maxOutputTokens: 2048 }
+      generationConfig: { maxOutputTokens: 1200 }
     })
   });
 
@@ -193,9 +196,9 @@ app.post('/api/chat', async (req, res) => {
     return res.status(400).json({ error: 'Please send a message.' });
   }
 
-  const messages = incoming.slice(-20).map(message => ({
+  const messages = incoming.slice(-12).map(message => ({
     role: message?.role === 'model' || message?.role === 'assistant' ? 'assistant' : 'user',
-    content: String(message?.text || message?.content || '').slice(0, 12000)
+    content: String(message?.text || message?.content || '').slice(0, 8000)
   })).filter(message => message.content.trim());
 
   if (!messages.length || messages[messages.length - 1].role !== 'user') {
