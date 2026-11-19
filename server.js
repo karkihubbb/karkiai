@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const { init: initPuter } = require('@heyputer/puter.js/src/init.cjs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,15 +12,16 @@ app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-const hasCloudKey = () => Boolean(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY);
+const hasCloudKey = () => Boolean(process.env.PUTER_AUTH_TOKEN || process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY);
 
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     service: 'KarkiAI',
     apiKeyConfigured: hasCloudKey(),
-    provider: process.env.GROQ_API_KEY ? 'Groq' : (process.env.GEMINI_API_KEY ? 'Gemini' : 'Pollinations (no key)'),
-    model: process.env.GROQ_API_KEY ? GROQ_MODEL : (process.env.GEMINI_API_KEY ? GEMINI_MODEL : 'openai')
+    puterConfigured: Boolean(process.env.PUTER_AUTH_TOKEN),
+    provider: process.env.PUTER_AUTH_TOKEN ? 'Puter' : (process.env.GROQ_API_KEY ? 'Groq' : (process.env.GEMINI_API_KEY ? 'Gemini' : 'Pollinations (no key)')),
+    model: process.env.PUTER_AUTH_TOKEN ? (process.env.PUTER_MODEL || 'gpt-5.5') : (process.env.GROQ_API_KEY ? GROQ_MODEL : (process.env.GEMINI_API_KEY ? GEMINI_MODEL : 'openai'))
   });
 });
 
@@ -120,6 +122,24 @@ async function searchWikipedia(query) {
     if (page?.extract) results.push({ title: page.title, snippet: page.extract, url: page.fullurl || 'https://' + lang + '.wikipedia.org/?curid=' + hit.pageid });
   }
   return results;
+}
+
+async function askPuter(messages) {
+  if (!process.env.PUTER_AUTH_TOKEN) throw new Error('PUTER_AUTH_TOKEN is not configured');
+  const puter = initPuter(process.env.PUTER_AUTH_TOKEN);
+  const result = await puter.ai.chat(
+    [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
+    {
+      model: process.env.PUTER_MODEL || 'gpt-5.5',
+      normalize: true,
+      max_tokens: 4096,
+      temperature: 0.7
+    }
+  );
+  const raw = result?.message?.content;
+  const answer = (typeof raw === 'string' ? raw : Array.isArray(raw) ? raw.map(part => part.text || '').join('\\n') : '').trim();
+  if (!answer) throw new Error('Puter returned an empty answer');
+  return { answer, model: process.env.PUTER_MODEL || 'gpt-5.5', provider: 'Puter' };
 }
 
 async function askGroq(messages) {
@@ -290,6 +310,7 @@ app.post('/api/chat', async (req, res) => {
   }
 
     const providers = [];
+  if (process.env.PUTER_AUTH_TOKEN) providers.push(['Puter', () => askPuter(messages)]);
   if (process.env.GROQ_API_KEY) providers.push(['Groq', () => askGroq(messages)]);
   if (process.env.GEMINI_API_KEY) providers.push(['Gemini', () => askGemini(messages)]);
 
