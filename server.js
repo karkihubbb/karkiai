@@ -32,10 +32,10 @@ function needsLiveSearch(question) {
   const q = String(question || '').trim();
   if (!q || /^(hi|hello|hey|hiya|yo|namaste|नमस्ते)[!. ,]*$/i.test(q)) return false;
   if (/^[\d\s+\-*/().%^×÷=]+$/.test(q)) return false;
-  // Skip creative / editing requests, but research almost every information-seeking question.
   if (/\b(write|draft|compose|translate|rewrite|proofread|polish|poem|story|joke|make me|create an image|generate an image|draw|brainstorm|roleplay)\b/i.test(q)) return false;
   if (/^(thanks|thank you|ok|okay|got it|good morning|good night|good job)[!. ]*$/i.test(q)) return false;
-  return true;
+  // Keep ordinary knowledge, explanations, maths and coding fast. Search only when freshness matters.
+  return /\b(current|currently|latest|newest|today|tonight|yesterday|this week|this month|recent|right now|as of now|breaking|news|2026|2083|price today|stock price|exchange rate|weather|forecast|who is the (?:current|new) (?:prime minister|president)|election results|live score|latest version)\b/i.test(q);
 }
 function decodeHtml(value) {
   return value.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)));
