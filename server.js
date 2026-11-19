@@ -81,6 +81,27 @@ async function searchUsPresident() {
   return [{ title: 'USA.gov — Current President of the United States', snippet: 'USA.gov identifies Donald John Trump as the 47th and current president of the United States.', url }];
 }
 
+async function searchBing(query) {
+  const url = 'https://www.bing.com/search?format=rss&q=' + encodeURIComponent(query);
+  const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; KarkiAI/1.0)', 'Accept': 'application/rss+xml, application/xml, text/xml' }, signal: AbortSignal.timeout(5000) });
+  if (!response.ok) throw new Error('Bing search returned ' + response.status);
+  const xml = await response.text();
+  const results = [];
+  const pattern = /<item>([\s\S]*?)<\/item>/gi;
+  let match;
+  while ((match = pattern.exec(xml)) && results.length < 5) {
+    const field = (name) => {
+      const found = match[1].match(new RegExp('<' + name + '>([\\s\\S]*?)<\\/' + name + '>', 'i'));
+      return found ? decodeHtml(found[1].replace(/^<!\[CDATA\[|\]\]>$/g, '').trim()) : '';
+    };
+    const title = field('title');
+    const link = field('link');
+    const snippet = field('description').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    if (title && /^https?:\/\//i.test(link)) results.push({ title, snippet, url: link });
+  }
+  return results;
+}
+
 async function searchWikipedia(query) {
   const lang = /[\u0900-\u097f]/.test(query) ? 'ne' : 'en';
   const base = 'https://' + lang + '.wikipedia.org/w/api.php';
@@ -241,15 +262,21 @@ app.post('/api/chat', async (req, res) => {
   if (needsLiveSearch(latestQuestion)) {
     const isNepalOfficeQuestion = /\b(nepal|nepali)\b/i.test(latestQuestion) && /\b(prime minister|pm|head of government)\b/i.test(latestQuestion);
     const isUsPresidentQuestion = /\b(united states|usa|u\.s\.|america)\b/i.test(latestQuestion) && /\b(president|head of state)\b/i.test(latestQuestion);
-    const searchQuery = latestQuestion + ' current 2026 Nepal 2083 BS when relevant';
-    const tasks = [searchWeb(searchQuery), searchWikipedia(latestQuestion)];
+    // Preserve the exact question; add freshness terms only when the user asks for changing facts.
+    const asksForFreshness = /\b(current|currently|latest|newest|today|tonight|this week|recent|right now|as of now|2026|2083)\b/i.test(latestQuestion);
+    const searchQuery = asksForFreshness ? latestQuestion + ' latest 2026' : latestQuestion;
+    // Cross-check two independent web indexes and Wikipedia; prioritize official sources for office holders.
+    const tasks = [searchWeb(searchQuery), searchBing(searchQuery), searchWikipedia(latestQuestion)];
     if (isNepalOfficeQuestion) tasks.push(searchNepalGovernment());
     if (isUsPresidentQuestion) tasks.push(searchUsPresident());
     const settled = await Promise.allSettled(tasks);
-    const webResults = settled[0].status === 'fulfilled' ? settled[0].value : [];
-    const wikiResults = settled[1].status === 'fulfilled' ? settled[1].value : [];
-    const officialResults = settled.slice(2).filter(x => x.status === 'fulfilled').flatMap(x => x.value);
-    const results = [...officialResults, ...webResults, ...wikiResults].slice(0, 8);
+    const ddgResults = settled[0].status === 'fulfilled' ? settled[0].value : [];
+    const bingResults = settled[1].status === 'fulfilled' ? settled[1].value : [];
+    const wikiResults = settled[2].status === 'fulfilled' ? settled[2].value : [];
+    const officialResults = settled.slice(3).filter(x => x.status === 'fulfilled').flatMap(x => x.value);
+    const results = [...officialResults, ...ddgResults, ...bingResults, ...wikiResults]
+      .filter((item, index, all) => all.findIndex(other => other.url === item.url) === index)
+      .slice(0, 10);
     if (results.length) {
       const research = results.map((item, index) => '[' + (index + 1) + '] ' + item.title + '\n' + item.snippet + '\nSource: ' + item.url).join('\n\n');
       messages[messages.length - 1].content += '\n\nLIVE WEB, OFFICIAL GOVERNMENT + WIKIPEDIA RESULTS (retrieved for this question; use these as primary evidence, prefer official government sources over Wikipedia for current office holders and changing facts, never answer from old training knowledge when current results contradict it, distinguish confirmed facts from uncertainty, and cite source URLs as Markdown links):\n' + research;
