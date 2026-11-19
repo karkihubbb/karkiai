@@ -5,7 +5,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
@@ -18,7 +18,8 @@ app.get('/api/health', (_req, res) => {
     ok: true,
     service: 'KarkiAI',
     apiKeyConfigured: hasCloudKey(),
-    provider: process.env.GROQ_API_KEY ? 'Groq' : (process.env.GEMINI_API_KEY ? 'Gemini' : 'Pollinations (no key)')
+    provider: process.env.GROQ_API_KEY ? 'Groq' : (process.env.GEMINI_API_KEY ? 'Gemini' : 'Pollinations (no key)'),
+    model: process.env.GROQ_API_KEY ? GROQ_MODEL : (process.env.GEMINI_API_KEY ? GEMINI_MODEL : 'openai')
   });
 });
 
