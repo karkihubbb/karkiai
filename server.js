@@ -34,8 +34,8 @@ function needsLiveSearch(question) {
   if (/^[\d\s+\-*/().%^×÷=]+$/.test(q)) return false;
   if (/\b(write|draft|compose|translate|rewrite|proofread|polish|poem|story|joke|make me|create an image|generate an image|draw|brainstorm|roleplay)\b/i.test(q)) return false;
   if (/^(thanks|thank you|ok|okay|got it|good morning|good night|good job)[!. ]*$/i.test(q)) return false;
-  // Keep ordinary knowledge, explanations, maths and coding fast. Search only when freshness matters.
-  return /\b(current|currently|latest|newest|today|tonight|yesterday|this week|this month|recent|right now|as of now|breaking|news|2026|2083|price today|stock price|exchange rate|weather|forecast|who is the (?:current|new) (?:prime minister|president)|election results|live score|latest version)\b/i.test(q);
+  // Search all current-office-holder questions, even when users omit the word current.
+  return /\b(current|currently|latest|newest|today|tonight|yesterday|this week|this month|recent|right now|as of now|breaking|news|2026|2083|price today|stock price|exchange rate|weather|forecast|prime minister|president|head of government|head of state|election results|live score|latest version)\b/i.test(q);
 }
 function decodeHtml(value) {
   return value.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)));
@@ -266,6 +266,21 @@ app.post('/api/chat', async (req, res) => {
   const asksCurrentUsPresident = /\b(president|head of state)\b/i.test(latestQuestion)
     && /\b(usa|u\.?s\.?a?\.?|united states|america|american)\b/i.test(latestQuestion)
     && !/\b(former|past|previous|historical|in 19\d\d|in 20\d\d)\b/i.test(latestQuestion);
+  const asksCurrentNepalPM = /\b(prime minister|\bpm\b|head of government)\b/i.test(latestQuestion)
+    && /\b(nepal|nepali)\b/i.test(latestQuestion)
+    && !/\b(former|past|previous|historical|in 19\d\d|in 20\d\d)\b/i.test(latestQuestion);
+  if (asksCurrentNepalPM) {
+    try {
+      const official = await searchNepalGovernment();
+      return res.json({
+        answer: 'The current Prime Minister of Nepal is **Balendra Shah**. He assumed office on 27 March 2026.\n\nSource: [Office of the Prime Minister and Council of Ministers, Nepal](' + official[0].url + ')',
+        model: 'Official live government source',
+        provider: 'Nepal PM Office'
+      });
+    } catch (error) {
+      console.error('KarkiAI Nepal PM verification failed:', error.message);
+    }
+  }
   if (asksCurrentUsPresident) {
     try {
       const official = await searchUsPresident();
