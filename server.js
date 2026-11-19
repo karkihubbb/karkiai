@@ -309,8 +309,13 @@ app.post('/api/chat', async (req, res) => {
     }
   }
 
-    const providers = [];
-  if (process.env.PUTER_AUTH_TOKEN) providers.push(['Puter', () => askPuter(messages)]);
+    // Use Puter as the primary AI when its owner token is configured.
+  if (process.env.PUTER_AUTH_TOKEN) {
+    try { return res.json(await askPuter(messages)); }
+    catch (error) { console.error('KarkiAI Puter provider failed:', error.message); }
+  }
+
+  const providers = [];
   if (process.env.GROQ_API_KEY) providers.push(['Groq', () => askGroq(messages)]);
   if (process.env.GEMINI_API_KEY) providers.push(['Gemini', () => askGemini(messages)]);
 
